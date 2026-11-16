@@ -25,10 +25,12 @@ def divide(parent,members,lines,points,buckets,parcels,geography,minimum=1):
     counts=[len(g) for g in groups.values()]
     if len(counts)<2 or min(counts)<minimum:return None,{'reason':'no useful serviced division','counts':counts}
     road_by_id={r['id']:r for r in geography.roads};mask=unary_union(lines).buffer(8);allowed=set()
+    from .landuse_paths import frontage_groups
+    flexible=frontage_groups(lines,buckets,geography)
     for key,indices in buckets.items():
         if len({owners[i] for i in indices if i in owners})<2:continue
         road=road_by_id.get(key[1]) if key[0]=='ordinary segment' else None
-        if road and road['geometry'].intersection(mask).length>road['geometry'].length*.7:allowed.add(key)
+        if road and (key in flexible or road['geometry'].intersection(mask).length>road['geometry'].length*.7):allowed.add(key)
         else:return None,{'reason':'protected group','group':list(key),'counts':counts}
     populated={k:set_precision(parts[k],0) for k in groups};empty=set(range(len(parts)))-set(groups)
     for _ in range(len(empty)+1):

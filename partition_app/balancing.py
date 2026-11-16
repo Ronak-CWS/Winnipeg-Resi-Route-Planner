@@ -90,16 +90,16 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
     parcel_values=list(parcels.values());parcel_tree=STRtree([p['geometry'] for p in parcel_values])
     road_values=list(geography.roads);road_tree=STRtree([r['geometry'] for r in road_values])
     next_key=max(regions,default=-1)+1
+    from .service_shape import cost as shape_cost
     audit={'natural_areas':natural_count,'merges':0,'splits':0,'candidates':0,'rejections':defaultdict(int),
            'ordinary_or_alley_dividers':0,'stage':'natural corrections' if natural_only else 'range',
-           'score_before':None if natural_only else sum(count_cost(len(v['members']),lower,upper) for v in regions.values())}
+           'score_before':None if natural_only else sum(count_cost(len(v['members']),lower,upper) for v in regions.values())+shape_cost(list(regions.values()),points,geography)}
     if not natural_only:
         from .access_refinement import separate,trim_empty_major_lobes
         revised,audit['road_connectivity']=separate(list(regions.values()),points,buckets,parcels,geography,ledger,boundary_evidence)
         revised,audit['empty_major_lobes']=trim_empty_major_lobes(revised,points,parcels,geography)
         regions=dict(enumerate(revised));next_key=len(regions)
     def service(region):return [points[i] for i in sorted(region['members'])]
-    from .service_shape import cost as shape_cost
     def score(region):
         return count_cost(len(region['members']),lower,upper)+(0 if natural_only else shape_cost([region],points,geography))
     def coalesce():
@@ -163,6 +163,8 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
         if not natural_only:
             from .landuse_split import corridors as landuse_corridors
             candidates.extend((f,) for f in landuse_corridors(geometry,geography))
+            from .landuse_paths import candidates as landuse_paths
+            candidates.extend((f,) for f in landuse_paths(geometry,geography))
         roads=[f for f in base if f['category']!='community'][:10]
         if not natural_only:candidates.extend(list(combinations(roads,2))[:24])
         if not natural_only:
@@ -191,6 +193,9 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             from .road_candidates import complete
             boundary_lines=[complete(divider_line(f),geometry,geography) for f in chosen]
             allowed=set()
+            if any(f['category']=='landuse_corridor' for f in chosen):
+                from .landuse_paths import frontage_groups
+                allowed.update(frontage_groups(boundary_lines,buckets,geography))
             for f in chosen:
                 # Eligibility depends on actual road alignment, including a
                 # municipal edge that genuinely follows a mapped street.
@@ -263,27 +268,28 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             from .boundary_evidence import profile
             physical=profile(cut,geography)
             entry['physical_boundary_strength']=physical
-            risk=2*(1-physical['strength'])
-            after=sum(count_cost(n,lower,upper) for n in counts)+risk*(len(counts)-1)
+            # Use the whole seam's physical cost, including its length. An
+            # average strength alone made a long stepped road path too cheap.
+            after=sum(count_cost(n,lower,upper) for n in counts)+physical['preference_cost']
             if not natural_only:
                 entry['service_shape_penalty']=shape_cost([{'members':part_members[j]} for j in populated],points,geography)
                 after+=entry['service_shape_penalty']
             from .continuity import assess
             quality=assess(cut,ownership,points,buckets,geography)
             entry['boundary_quality']=quality
+            if quality['street_breaks'] or quality['alley_side_splits']:
+                reject('unsupported street or opposing alley split');continue
             after+=quality['penalty']
             gain=score(region)-after
             if natural_only:
-                if quality['street_breaks'] or quality['alley_side_splits']:
-                    reject('unsupported street or opposing alley split');continue
                 after=-sum(f.get('municipal_alignment',0) for f in chosen);gain=1
             entry.update({'counts':counts,'score_before':None if natural_only else round(score(region),6),
                 'score_after':None if natural_only else round(after,6),'gain':None if natural_only else round(gain,6)})
             if gain<(.01 if natural_only else .4):reject('range benefit does not justify another division');continue
             if any(g.geom_type!='Polygon' or not g.is_valid for g in populated.values()):reject('non-contiguous child');continue
             entry['state']='VALID_CANDIDATE';entry['reason']=('Supported municipal arterial creates useful natural areas without a tiny remnant.' if natural_only else 'Improves requested range without cutting a protected ordinary frontage or site.');ledger.append(entry)
-            candidate=(after, len(counts),candidate_id,populated,part_members,allowed,entry)
-            if best is None or candidate[:3]<best[:3]:best=candidate
+            candidate=(after,len(counts),cut.length,candidate_id,populated,part_members,allowed,entry)
+            if best is None or candidate[:4]<best[:4]:best=candidate
         if best is None and not natural_only and len(indices)>=2*lower:
             from .whole_blocks import regroup
             audit['last_resort_attempts']=audit.get('last_resort_attempts',0)+1
@@ -319,7 +325,7 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                 audit['splits']+=1
                 continue
         if best is None:blocked.add(key);continue
-        _,_,_,geometries,group_members,allowed,entry=best
+        _,_,_,_,geometries,group_members,allowed,entry=best
         entry['state']='CHOSEN';entry['chosen_for_split']=True
         from .continuity import split_frontage_buckets
         split_frontage_buckets(buckets,allowed,{i:j for j,group in group_members.items() for i in group})

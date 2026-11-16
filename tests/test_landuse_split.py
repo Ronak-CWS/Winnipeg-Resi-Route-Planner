@@ -3,6 +3,7 @@ from shapely.geometry import box,Point,LineString
 from shapely.strtree import STRtree
 from partition_app.landuse_split import between_completions
 from partition_app.balancing import rebalance
+from partition_app.alternatives import divide
 
 
 def geography(features=(),parcels=(),roads=()):
@@ -47,3 +48,29 @@ def test_public_park_outline_cannot_slice_a_serviced_residential_property():
     assert sorted(len(r['members']) for r in result)==[600,801]
     assert sum(parcel['geometry'].intersection(r['geometry']).area>4 for r in result)==1
     assert audit['splits']==1
+
+
+def test_a_supported_park_gap_can_split_an_over_broad_road_group_without_a_street_cut():
+    road={'id':'street','name':'Example St','type':'STREET','geometry':LineString([(0,500),(1000,500)])}
+    park={'id':'greenway','category':'park','geometry':box(480,0,520,1000)}
+    points=[Point(100,480),Point(200,520),Point(800,480),Point(900,520)]
+    g=geography([park],roads=[road]);g.boundary_service_tree=STRtree(points)
+    buckets={('ordinary segment','street'):[0,1,2,3]}
+    option,report=divide(box(0,0,1000,1000),set(range(4)),[LineString([(480,0),(480,1000)])],points,buckets,{},g)
+    assert option is not None,report
+    assert not option['quality']['street_breaks'] and not option['quality']['alley_side_splits']
+    assert sorted(len(c['members']) for c in option['children'])==[2,2]
+    blocked=dict(buckets);blocked['site','shared']=[0,2]
+    assert divide(box(0,0,1000,1000),set(range(4)),[LineString([(480,0),(480,1000)])],points,blocked,{},g)[0] is None
+
+
+def test_a_long_stepped_road_is_not_worth_splitting_only_to_hit_the_count_target():
+    points=[Point(100+(i%30)*10,100+(i//30)*100) for i in range(600)]
+    points += [Point(1600+(i%20)*10,100+(i//20)*80) for i in range(800)]
+    road={'id':'stepped','name':'Winding St','type':'STREET',
+        'geometry':LineString([(1000,0),(1000,800),(1400,800),(1400,1600),(600,1600),(600,2400),(1000,2400),(1000,4000)])}
+    g=geography(roads=[road]);g.boundary_service_tree=STRtree(points)
+    result,audit=rebalance({0:box(0,0,2000,4000)},{0:set(range(1400))},{},points,{}, {},g,
+        {'preferred_minimum':900,'maximum_addresses':1100},[],lambda *a:None,{})
+    assert [len(r['members']) for r in result]==[1400]
+    assert audit['splits']==0
