@@ -171,10 +171,11 @@ function showResult(result,fit){
   const targetUnmet=(result.summary.areas_above_limit||0)>0;
   const belowRange=(result.summary.areas_below_range||0)>0;
   $('status-pill').textContent=result.status==='FAILED'?'Needs correction':targetUnmet?'Target unresolved':belowRange?'Range review':'Provisional';$('status-pill').className='pill'+(result.status==='FAILED'||targetUnmet?' failed':'');
-  if(targetUnmet)notice(`${result.summary.areas_above_limit} areas exceed the ${fmt(result.settings.maximum_addresses)} upper bound. The target is unresolved; inspect the reasons in Areas or Checks.`,true);
+  if(result.status==='FAILED')notice((result.findings||[]).filter(f=>f.severity==='error').map(f=>f.message).join('; ')||'Service areas failed validation. Open Checks for the cause.',true);
+  else if(targetUnmet)notice(`${result.summary.areas_above_limit} areas exceed the ${fmt(result.settings.maximum_addresses)} upper bound. The target is unresolved; inspect the reasons in Areas or Checks.`,true);
   else if(result.settings.use_mapped_alley_evidence)notice('Provisional boundaries use mapped rear-alley evidence. Actual pickup access remains unknown and needs confirmation.');
   $('areas-badge').textContent=result.summary.areas;$('checks-badge').textContent=result.summary.errors+result.summary.warnings;
-  $('footer-meta').textContent=`${result.partition_hash.slice(0,10)} · ${result.settings.mode==='natural'?'Natural baseline':'Range '+fmt(result.settings.preferred_minimum)+'–'+fmt(result.settings.maximum_addresses)} · ${dayName()}`;
+  $('footer-meta').textContent=`${result.partition_hash.slice(0,10)} · ${result.settings.mode==='natural'?'Natural baseline':'Range '+fmt(result.settings.preferred_minimum)+'–'+fmt(result.settings.maximum_addresses)} · ${dayName()}${result.requires_recalculation?' · Saved with '+result.engine+'; recreate service areas to apply updated rules':''}`;
   $('export-button').disabled=false;
   for(const link of document.querySelectorAll('[data-kind]'))link.href=`/api/download?key=${result.key}&kind=${link.dataset.kind}`;
   if(areaLayer)map.removeLayer(areaLayer);

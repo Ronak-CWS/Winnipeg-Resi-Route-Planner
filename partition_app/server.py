@@ -73,7 +73,20 @@ def cache_key(dataset, target, tolerance=15, minimum=None, maximum=None, use_map
 def load_result(key):
     if not re.fullmatch(r"[a-f0-9]{64}", key):
         raise FileNotFoundError("Unknown result.")
-    return json.loads((CACHE / f"{key}.result.json").read_text(encoding="utf-8"))
+    result=json.loads((CACHE / f"{key}.result.json").read_text(encoding="utf-8"))
+    result['current_engine_version']=ENGINE_VERSION
+    result['requires_recalculation']=result.get('engine')!=ENGINE_VERSION
+    return result
+
+
+def restore_current():
+    """Keep an accepted saved view across upgrades without relabelling its engine."""
+    pointer=CACHE/'current.json'
+    if not pointer.exists():return
+    key=json.loads(pointer.read_text())['key'];result=load_result(key)
+    if (result.get('status')!='FAILED' and result.get('engine','').startswith('winnipeg-geography-')
+            and not result['settings'].get('use_mapped_alley_evidence')):
+        STATE.update(current=key,day=result['day'])
 
 
 def run_job(job_id, dataset, target, key, tolerance=15, minimum=None, maximum=None, use_mapped_alleys=False):
@@ -245,6 +258,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply((CACHE / f"{key}.{extension}").read_bytes(), content_type=mime, filename=f"{label}_partition_{extension}")
             static = {"/": (WEB / "index.html", "text/html; charset=utf-8"), "/app.css": (WEB / "app.css", "text/css"),
                       "/app.js": (WEB / "app.js", "text/javascript"), "/routing.js": (WEB / "routing.js", "text/javascript"),
+                      "/facility-form.js": (WEB / "facility-form.js", "text/javascript"),
                       "/routing.css": (WEB / "routing.css", "text/css"), "/basemap-policy.js": (ROOT / "scripts/basemap_request_policy.js", "text/javascript")}
             for name in ("leaflet.js", "leaflet.css", "maplibre-gl.js", "maplibre-gl.css", "leaflet-maplibre-gl.js"):
                 static[f"/vendor/{name}"] = (ASSETS / name, "text/css" if name.endswith("css") else "text/javascript")
@@ -343,13 +357,7 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
     CACHE.mkdir(parents=True, exist_ok=True)
-    current = CACHE / "current.json"
-    if current.exists():
-        key = json.loads(current.read_text())["key"]
-        result = load_result(key)
-        if result.get("engine") == ENGINE_VERSION and not result['settings'].get('use_mapped_alley_evidence'):
-            STATE["current"] = key
-            STATE["day"] = result["day"]
+    restore_current()
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     print(f"Service-area app: http://127.0.0.1:{args.port}", flush=True)
     print(f"Local delivery: {DELIVERY}", flush=True)
