@@ -24,7 +24,7 @@ from .geography import FORWARD, canonical, divider_line, polygon_parts, unprojec
 from .preferences import address_preferences
 from .balancing import rebalance, linear_separator, hard_separator, footprint_between
 
-ENGINE_VERSION = "winnipeg-geography-4.5"
+ENGINE_VERSION = "winnipeg-geography-4.6"
 COLOURS = ["#2563eb", "#0d9488", "#e08832", "#9b5de5", "#cf4d77", "#568438", "#1484a6", "#a76a40", "#5a65ab", "#ad7d13", "#247b64", "#b55440"]
 
 
@@ -845,6 +845,8 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
         if nearest:
             estimated_nearest.append(row["id"])
     progress(72, "Checking exported ownership, containment, parcels and topology")
+    from .publication import shared_edge_vertices
+    publication_inputs = shared_edge_vertices({root:occupied[root] for root in roots})
     sections = []
     for root in roots:
         sid = section_id[root]
@@ -889,7 +891,7 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
             "city_neighbourhood_counts":dict(parent_counts),
             "size_status": "ABOVE_LIMIT" if oversize_reason else "SMALL_NATURAL_AREA" if target and count < preferences["preferred_minimum"] else "IN_RANGE" if target else "NATURAL",
             "oversize_reason": oversize_reason,
-            "status": "PROVISIONAL"}, "geometry": mapping(publication_geometry(geometry))})
+            "status": "PROVISIONAL"}, "geometry": mapping(publication_geometry(publication_inputs[root]))})
         if planning_metadata.get(root,{}).get('last_resort_boundary_review'):
             findings.append({'code':'LAST_RESORT_BOUNDARY','severity':'warning','section':sid,
                 'message':('A continuous City street/municipal boundary replaced fragmented cuts. Recorded opposite-curb exceptions apply along that street; shared sites, coordinates and parcels remain whole. Review actual pickup access.'
