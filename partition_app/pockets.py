@@ -110,6 +110,8 @@ def consolidate_sparse_pockets(regions,points,geography):
             if hard_separator(union,a+b,geography):
                 blocked.append({'addresses':len(other['members']),'service_gap_m':round(distance,2),'reason':'rail, water or major highway'});continue
             if footprint_between(union,a,b,geography,{'park','recreation','mapped_open_land','landuse'}):continue
+            from .access import connected
+            if hasattr(geography,'access_network') and connected(pocket,other,points,geography) is not True:continue
             # Rejoining the former remote owner defeats the pocket correction.
             if distance>500:continue
             candidates.append((distance+500*boundary_merge_cost(seam,geography),min(other['members']),other,union))

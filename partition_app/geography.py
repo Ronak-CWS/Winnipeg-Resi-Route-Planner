@@ -376,7 +376,7 @@ class Geography:
         self.features.extend(alley_frontage_candidates(self.features, self.roads))
         self.features.sort(key=lambda f: f["id"])
         self.feature_tree = STRtree([f["geometry"] for f in self.features])
-        self.prepared_road_revision = 10
+        self.prepared_road_revision = 11
         if hasattr(self,'divider_tree'):del self.divider_tree
         self.divider_indexes={}
 

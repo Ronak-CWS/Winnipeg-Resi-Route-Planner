@@ -62,7 +62,7 @@ def discover_corridors(geography):
             # multi-lane evidence. Weaker broad corridors are target candidates,
             # not mandatory natural cuts through every neighbourhood.
             natural=municipal>=.4 and supported>=250 and median is not None and median>=18
-            candidate=natural or fraction>=.15 and supported>=250 or median is not None and median>=26
+            candidate=natural or fraction>=.15 and supported>=250 or median is not None and median>=22
             review.append({'name':roads[component[0]]['name'],'length_m':round(geometry.length,1),
                 'multi_lane_or_arterial_support_m':round(supported,1),'support_fraction':round(fraction,4),
                 'municipal_alignment':round(municipal,4),'median_public_right_of_way_m':round(median,2) if median is not None else None,

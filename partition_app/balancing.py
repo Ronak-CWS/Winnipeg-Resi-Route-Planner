@@ -17,7 +17,7 @@ def count_cost(count, lower, upper):
     deficit=max(0,lower-count)/lower
     excess=max(0,count-upper)/lower
     floor=min(400,lower*.5)
-    return .35+deficit**2+8*excess+12*excess**2+2*(max(0,floor-count)/floor)**2
+    return .35+deficit**2+(2 if excess else 0)+8*excess+12*excess**2+2*(max(0,floor-count)/floor)**2
 
 
 def populated_parts(parts, points):
@@ -93,8 +93,15 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
     audit={'natural_areas':natural_count,'merges':0,'splits':0,'candidates':0,'rejections':defaultdict(int),
            'ordinary_or_alley_dividers':0,'stage':'natural corrections' if natural_only else 'range',
            'score_before':None if natural_only else sum(count_cost(len(v['members']),lower,upper) for v in regions.values())}
+    if not natural_only:
+        from .access_refinement import separate,trim_empty_major_lobes
+        revised,audit['road_connectivity']=separate(list(regions.values()),points,buckets,parcels,geography,ledger,boundary_evidence)
+        revised,audit['empty_major_lobes']=trim_empty_major_lobes(revised,points,parcels,geography)
+        regions=dict(enumerate(revised));next_key=len(regions)
     def service(region):return [points[i] for i in sorted(region['members'])]
-    def score(region):return count_cost(len(region['members']),lower,upper)
+    from .service_shape import cost as shape_cost
+    def score(region):
+        return count_cost(len(region['members']),lower,upper)+(0 if natural_only else shape_cost([region],points,geography))
     def coalesce():
         for _ in range(natural_count*2):
             keys=sorted(regions);tree=STRtree([regions[k]['geometry'] for k in keys]);options=[]
@@ -106,7 +113,7 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                     rb=regions[b];nb=len(rb['members']);total=na+nb
                     if lower<=na<=upper and total>upper or lower<=nb<=upper and total>upper:
                         audit['rejections']['satisfactory neighbour would leave range']+=1;continue
-                    gain=score(ra)+score(rb)-count_cost(total,lower,upper)
+                    gain=score(ra)+score(rb)-score({'members':ra['members']|rb['members']})
                     if gain<=.02:continue
                     shared=shared_boundary(ra['geometry'],rb['geometry'])
                     if shared.length<1:continue
@@ -119,6 +126,9 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                         audit['rejections']['important physical divider']+=1;continue
                     if footprint_between(union,service(ra),service(rb),geography,{'park','recreation','mapped_open_land','landuse'}):
                         audit['rejections']['complete park or land-use corridor']+=1;continue
+                    from .access import connected
+                    if hasattr(geography,'access_network') and connected(ra,rb,points,geography) is not True:
+                        audit['rejections']['no demonstrated internal road connection']+=1;continue
                     options.append((-gain,-shared.length,a,b,union))
             if not options:break
             _,_,a,b,union=min(options,key=lambda v:v[:4]);ra,rb=regions.pop(a),regions.pop(b)
@@ -168,18 +178,18 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             # try complete mapped streets before constructing a parcel mesh.
             # The same ownership/parcel/continuity gates apply to both paths.
             from .continuity import corridors, composite_corridors
+            from .road_candidates import chains
             streets=corridors(geography,geometry)
             candidates.extend((dict(r, category='street_corridor', rank=6,
                 evidence='Finite continuous City street; ordinary-road fallback'),)
-                for r in streets+composite_corridors(streets,geometry))
+                for r in streets+composite_corridors(streets,geometry)+chains(geometry,geography))
         best=None
         for chosen in candidates:
             ordinary=all(f['category']=='street_corridor' for f in chosen)
-            if ordinary and best is not None and not best[6].get('ordinary_road_fallback'):
-                continue
             audit['candidates']+=1
             candidate_id=('natural-' if natural_only else 'range-')+'balance-'+hashlib.sha256((canonical(geometry)+'|'.join(f['id'] for f in chosen)).encode()).hexdigest()[:16]
-            boundary_lines=[divider_line(f) for f in chosen]
+            from .road_candidates import complete
+            boundary_lines=[complete(divider_line(f),geometry,geography) for f in chosen]
             allowed=set()
             for f in chosen:
                 # Eligibility depends on actual road alignment, including a
@@ -247,9 +257,17 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             counts=[len(part_members[j]) for j in populated]
             entry['counts']=counts
             if min(counts)<(400 if natural_only else min(400,lower*.5)):reject('would create a new tiny section');continue
-            risk=.06 if all(f['category']=='community' for f in chosen) else .12
-            if ordinary:risk=.6
+            # Candidate labels are not evidence of boundary quality. Compare
+            # actual physical support consistently, including real road paths
+            # that were previously skipped after any municipal cut succeeded.
+            from .boundary_evidence import profile
+            physical=profile(cut,geography)
+            entry['physical_boundary_strength']=physical
+            risk=2*(1-physical['strength'])
             after=sum(count_cost(n,lower,upper) for n in counts)+risk*(len(counts)-1)
+            if not natural_only:
+                entry['service_shape_penalty']=shape_cost([{'members':part_members[j]} for j in populated],points,geography)
+                after+=entry['service_shape_penalty']
             from .continuity import assess
             quality=assess(cut,ownership,points,buckets,geography)
             entry['boundary_quality']=quality
@@ -277,7 +295,7 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                 owners={i:k for k,r in enumerate(fallback['regions']) for i in r['members']}
                 quality=assess(fallback['cut'],owners,points,buckets,geography)
                 fallback_review['boundary_quality']=quality
-                fallback_review['score_with_boundary_quality']=fallback['score']+quality['penalty']
+                fallback_review['score_with_boundary_quality']=fallback['score']+quality['penalty']+shape_cost(fallback['regions'],points,geography)
                 if score(region)-fallback_review['score_with_boundary_quality']<.4:
                     fallback_review.update(state='REJECTED',reason='Street/alley quality outweighs count benefit')
                     blocked.add(key)

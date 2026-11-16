@@ -246,7 +246,9 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
         quality_cache[key]=value
         return value
     def affected_score(a,b,left,right):
+        from .service_shape import cost as shape_cost
         return (count_cost(len(left['members']),lower,upper)+count_cost(len(right['members']),lower,upper)
+            +shape_cost([left,right],points,geography)
             +pair_score(left,right)+sum(pair_score(r,left)+pair_score(r,right)
                 for k,r in enumerate(regions) if k not in {a,b}))
     seen={tuple(sorted(canonical(r['geometry']) for r in regions))}
@@ -279,7 +281,8 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                 hood_mask=hood_edges.buffer(8)
                 streets=corridors(geography,union)
                 for road in streets+composite_corridors(streets,union):
-                    line=road['geometry'];inside=line.intersection(union)
+                    from .road_candidates import complete
+                    line=complete(road['geometry'],union,geography);inside=line.intersection(union)
                     if inside.length<250:continue
                     alignment=inside.intersection(hood_mask).length/max(inside.length,1)
                     audit['candidates']+=1
@@ -295,7 +298,15 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                         if not hits:break
                         owners[i]=min(hits);part_members[min(hits)].add(i)
                     if len(owners)!=len(ownership) or len(part_members)!=2:continue
-                    if min(map(len,part_members.values()))<min(400,lower*.5):continue
+                    minimum_child=min(400,lower*.5)
+                    if conflicts:minimum_child=min(minimum_child,len(ra['members']),len(rb['members']))
+                    if min(map(len,part_members.values()))<minimum_child:continue
+                    # Optional quality repair must preserve every previously
+                    # satisfactory population in a satisfactory new owner.
+                    if any(lower<=len(old['members'])<=upper and any(
+                        not lower<=len(group)<=upper for group in part_members.values() if group&old['members'])
+                        for old in (ra,rb)):
+                        decision['reason']='A satisfactory neighbour would leave its requested range';continue
                     allowed=set();bad=False
                     line_mask=line.buffer(8)
                     for key,members in buckets.items():
@@ -322,10 +333,16 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                     if any(sum(p['geometry'].intersection(g).area>max(4,p['geometry'].area*.02) for g in populated.values())>1
                            for p in parcels.values() if p['geometry'].intersects(cut)):continue
                     after=assess(cut,owners,points,buckets,geography,line)
+                    if after['street_breaks'] or after['alley_side_splits']:continue
                     # A continuous broad street is preferable to an ordinary
                     # residential street. Municipal alignment is a score, not
                     # a veto that leaves an even worse alley seam untouched.
                     children=[{'geometry':g,'members':part_members[j]} for j,g in sorted(populated.items())]
+                    from .access import disconnected_count,respects_separations
+                    if not respects_separations(children,geography):
+                        decision['reason']='Would undo an access-based natural division';continue
+                    if disconnected_count(children,points,geography)>disconnected_count([ra,rb],points,geography)+5:
+                        decision['reason']='Would combine disconnected road populations';continue
                     new_cost=affected_score(a,b,*children)
                     state=tuple(sorted(canonical(r['geometry']) for k,r in enumerate(regions) if k not in {a,b})+sorted(canonical(r['geometry']) for r in children))
                     state=tuple(sorted(state))

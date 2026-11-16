@@ -16,7 +16,8 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
         owners={i:0 for i in left['members']}|{i:1 for i in right['members']}
         return assess(seam,owners,points,buckets,geography)['penalty']+profile(seam,geography)['preference_cost']+neighbourhood_division_cost(seam,left['geometry'].union(right['geometry']))
     def affected(a,b,left,right):
-        return count_cost(len(left['members']),lower,upper)+count_cost(len(right['members']),lower,upper)+pair_cost(left,right)+sum(pair_cost(r,left)+pair_cost(r,right) for k,r in enumerate(regions) if k not in {a,b})
+        from .service_shape import cost as shape_cost
+        return count_cost(len(left['members']),lower,upper)+count_cost(len(right['members']),lower,upper)+shape_cost([left,right],points,geography)+pair_cost(left,right)+sum(pair_cost(r,left)+pair_cost(r,right) for k,r in enumerate(regions) if k not in {a,b})
     for _ in range(len(regions)):
         pending=[]
         for a,left in enumerate(regions):
@@ -31,12 +32,12 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                 if not land_features(seam.buffer(140),geography):continue
                 pending.append((-nonmajor_road,a,b,key))
         changed=False
-        for _,a,b,key in sorted(pending):
+        for position,(_,a,b,key) in enumerate(sorted(pending),1):
             left,right=regions[a],regions[b]
             if key!=tuple(sorted((canonical(left['geometry']),canonical(right['geometry'])))):continue
             tested.add(key);parent=left['geometry'].union(right['geometry'])
             if parent.geom_type!='Polygon' or hard_separator(parent,[points[i] for i in left['members']|right['members']],geography):continue
-            progress(71,'Comparing school and commercial grounds with ordinary-road boundaries')
+            progress(71,f'Comparing school and commercial boundaries {position}/{len(pending)}')
             alternatives=candidates(left,right,points,buckets,parcels,geography)
             before=affected(a,b,left,right);options=[]
             for option in alternatives:
@@ -54,6 +55,10 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                 if quality['street_breaks'] or quality['alley_side_splits']:
                     audit['rejections'].append({'counts':counts,'reason':'Street/alley violation','quality':quality});continue
                 if any(hard_separator(c['geometry'],[points[i] for i in c['members']],geography) for c in children):continue
+                from .access import disconnected_count,respects_separations
+                if not respects_separations(children,geography):continue
+                if disconnected_count(children,points,geography)>disconnected_count([left,right],points,geography)+5:
+                    audit['rejections'].append({'counts':counts,'reason':'Would combine disconnected road populations'});continue
                 after=affected(a,b,*children)
                 if before-after<.2:continue
                 options.append((after,canonical(option['geometry']),option,quality))

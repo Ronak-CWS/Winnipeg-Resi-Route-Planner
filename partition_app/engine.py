@@ -24,7 +24,7 @@ from .geography import FORWARD, canonical, divider_line, polygon_parts, unprojec
 from .preferences import address_preferences
 from .balancing import rebalance, linear_separator, hard_separator, footprint_between
 
-ENGINE_VERSION = "winnipeg-geography-4.6"
+ENGINE_VERSION = "winnipeg-geography-4.7"
 COLOURS = ["#2563eb", "#0d9488", "#e08832", "#9b5de5", "#cf4d77", "#568438", "#1484a6", "#a76a40", "#5a65ab", "#ad7d13", "#247b64", "#b55440"]
 
 
@@ -274,7 +274,7 @@ def small_area_exception(root,occupied,area_counts,geography,ceiling,service_poi
             if gap>500:remote_gap=gap
     dividers=getattr(geography,'nearby_dividers',geography.nearby_features)
     physical={'waterway','railway','controlled_road','high_speed_road','wide_road','park','water_area','landuse','recreation','mapped_open_land'}
-    remote_neighbour=False
+    remote_neighbour=False;unproven_access=False
     for distance,other in nearby:
         g=occupied[other]
         shared=geometry.boundary.intersection(g.boundary) if distance<1 else None
@@ -287,9 +287,14 @@ def small_area_exception(root,occupied,area_counts,geography,ceiling,service_poi
         if blocked:continue
         if railway_separates_services(geometry.union(g),service_points+(other_points or {}).get(other,[]),geography):continue
         if remote_gap is not None:remote_neighbour=True;continue
+        from .access import connected_points
+        if hasattr(geography,'access_network') and connected_points(geometry,g,service_points,(other_points or {}).get(other,[]),geography) is not True:
+            unproven_access=True;continue
         return 'NEEDS_REVIEW','A larger area is within 500 m without an inventoried important divider; a valid whole-block merge still needs correction.'
     if remote_neighbour:
         return 'REMOTE',f'The nearest other serviced address is {remote_gap:.0f} m away. Touching empty land does not provide nearby collection; truck ownership is evaluated with real road connections.'
+    if unproven_access:
+        return 'NO_DIRECT_ACCESS','Nearby polygons do not demonstrate an internal mapped road connection between their service populations. Keep this area separate and review actual collection access.'
     return 'IMPORTANT_BOUNDARY','An inventoried important boundary or intervening service area prevents the nearby larger-area merge.'
 
 
@@ -395,6 +400,11 @@ def merge_target_regions(current, counts, dsu, cells, geography, target, ceiling
             reasons['railway separation veto']+=1;return False
         if hard_separator(union,service_points[a]+service_points[b],geography):
             reasons['important physical separation veto']+=1;return False
+        return True
+    def access_safe(a,b):
+        from .access import connected_points
+        if hasattr(geography,'access_network') and connected_points(current[a],current[b],service_points[a],service_points[b],geography) is not True:
+            reasons['no demonstrated internal road connection']+=1;return False
         return True
     def push(a,b):
         nonlocal serial
@@ -511,7 +521,7 @@ def merge_target_regions(current, counts, dsu, cells, geography, target, ceiling
             candidate=None
             for _,b in sorted(options):
                 union=current[a].union(current[b])
-                if union.geom_type=='Polygon' and rail_safe(a,b,union):candidate=(b,union);break
+                if union.geom_type=='Polygon' and rail_safe(a,b,union) and access_safe(a,b):candidate=(b,union);break
             if candidate is None:break
             b,union=candidate
             crossed_city=parents[a]!=parents[b] or adjacent[a][b]['strong']
@@ -532,6 +542,7 @@ def merge_target_regions(current, counts, dsu, cells, geography, target, ceiling
         # an important divider or somebody else's serviced parcel is.
         if current[b].geom_type!='Polygon' and not permitted_nearby_components(current[b],nearby_links.get(b),service_points[b]):return None
         if not rail_safe(a,b,current[a].union(current[b])):return None
+        if not access_safe(a,b):return None
         remaining=polygon_parts(current[a]);reached=polygon_parts(current[b]);links=[]
         owners=current[a].union(current[b]);accumulated=counts[b]
         while remaining:
@@ -582,6 +593,7 @@ def merge_target_regions(current, counts, dsu, cells, geography, target, ceiling
         union=current[a].union(current[b])
         if union.geom_type!='Polygon':continue
         if not rail_safe(a,b,union):continue
+        if not access_safe(a,b):continue
         root=join(a,b,union)
         for n in sorted(adjacent[root]):
             push(root,n)
@@ -602,11 +614,13 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
     if use_mapped_alleys:
         raise ValueError("Both curbs stay together until pickups are confirmed. Mapped alleys alone cannot enable a street boundary; supply confirmed CollectionAccess per address.")
     preferences["use_mapped_alley_evidence"] = use_mapped_alleys
-    if hasattr(geography, "refresh_dividers") and getattr(geography, "prepared_road_revision", 0) < 10:
+    if hasattr(geography, "refresh_dividers") and getattr(geography, "prepared_road_revision", 0) < 11:
         geography.refresh_dividers()
     rows = sorted(dataset.rows, key=lambda row: row["id"])
     xs, ys = FORWARD.transform([r["lon"] for r in rows], [r["lat"] for r in rows])
     points = [Point(x, y) for x, y in zip(xs, ys)]
+    from .access import prepare as prepare_access
+    prepare_access(geography,rows)
     trusted = [i for i, r in enumerate(rows) if r["trusted"]]
     from .boundary_evidence import register_services
     register_services(geography,[points[i] for i in trusted])
@@ -819,6 +833,11 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
         for group in buckets.values():
             for i in group[1:]:atomic.union(group[0],i)
         atomic_counts=Counter(atomic.find(i) for i in trusted)
+        # Later tail/pocket repairs can expose a complete empty face enclosed
+        # by another owner. Reassign that existing face before publication,
+        # just as in the initial cell stage; never publish an unowned hole.
+        occupied,final_coverage=shared_native_coverage(occupied)
+        for name,value in final_coverage.items():coverage_notes[name]=coverage_notes.get(name,0)+value
     # Stable numbering depends on geometry/identity, never hash iteration or row order.
     roots = sorted(occupied, key=lambda root: (min(rows[i]["id"] for i in trusted if dsu.find(row_cell[i]) == root), canonical(occupied[root])))
     section_id = {root: f"{dataset.day[:3]}-{number:03d}" for number, root in enumerate(roots, 1)}
