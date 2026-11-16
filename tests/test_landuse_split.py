@@ -74,3 +74,24 @@ def test_a_long_stepped_road_is_not_worth_splitting_only_to_hit_the_count_target
         {'preferred_minimum':900,'maximum_addresses':1100},[],lambda *a:None,{})
     assert [len(r['members']) for r in result]==[1400]
     assert audit['splits']==0
+
+
+def test_a_park_split_cannot_strand_a_population_that_needs_the_other_childs_roads():
+    from partition_app.access import RoadAccess,prepare
+    from partition_app.geography import REVERSE
+    points=[Point(100+(i%35)*20,200+i//35) for i in range(350)]
+    points += [Point(100+(i%35)*20,800+i//35) for i in range(350)]
+    points += [Point(1500+(i%7-3)*2,220+(i//7)*5) for i in range(700)]
+    lines=[LineString([(100,200),(1500,200)]),LineString([(100,800),(1500,800)]),LineString([(1500,200),(1500,800)])]
+    names=['North St','South St','East St'];nodes=[(1,2),(3,4),(2,4)]
+    roads=[{'id':str(i),'name':names[i],'type':'STREET','geometry':line} for i,line in enumerate(lines)]
+    park={'id':'park','category':'park','geometry':box(980,0,1020,1000)}
+    g=geography([park],roads=roads);g.boundary_service_tree=STRtree(points)
+    g.access_network=RoadAccess([{'id':i,'name':names[i],'nodes':nodes[i],
+        'coords':[REVERSE.transform(*xy) for xy in line.coords],'tags':{'highway':'residential'}} for i,line in enumerate(lines)])
+    rows=[{'address':f'{i+1} '+names[0 if i<350 else 1 if i<700 else 2]} for i in range(1400)]
+    prepare(g,rows)
+    result,audit=rebalance({0:box(0,0,2000,1000)},{0:set(range(1400))},{},points,{}, {},g,
+        {'preferred_minimum':900,'maximum_addresses':1100},[],lambda *a:None,{})
+    assert [len(r['members']) for r in result]==[1400]
+    assert audit['rejections']['would strand a service population outside its internal road network']>0

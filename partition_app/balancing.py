@@ -143,6 +143,8 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
         if not oversized:break
         key=oversized[0];region=regions[key];geometry=region['geometry'];indices=sorted(region['members'])
         if geometry.geom_type!='Polygon':blocked.add(key);continue
+        from .access import disconnected_count
+        disconnected_before=0 if natural_only else disconnected_count([region],points,geography)
         features=geography.nearby_features(geometry,{'community','wide_road','municipal_corridor','broad_corridor','park','recreation','mapped_open_land'})
         types={'municipal_corridor'} if natural_only else {'community','wide_road','municipal_corridor','broad_corridor'}
         base=[f for f in features if f['category'] in types]
@@ -287,6 +289,10 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                 'score_after':None if natural_only else round(after,6),'gain':None if natural_only else round(gain,6)})
             if gain<(.01 if natural_only else .4):reject('range benefit does not justify another division');continue
             if any(g.geom_type!='Polygon' or not g.is_valid for g in populated.values()):reject('non-contiguous child');continue
+            if not natural_only:
+                children=[{'geometry':g,'members':part_members[j]} for j,g in populated.items()]
+                if disconnected_count(children,points,geography)>disconnected_before+5:
+                    reject('would strand a service population outside its internal road network');continue
             entry['state']='VALID_CANDIDATE';entry['reason']=('Supported municipal arterial creates useful natural areas without a tiny remnant.' if natural_only else 'Improves requested range without cutting a protected ordinary frontage or site.');ledger.append(entry)
             candidate=(after,len(counts),cut.length,candidate_id,populated,part_members,allowed,entry)
             if best is None or candidate[:4]<best[:4]:best=candidate
@@ -297,11 +303,17 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             fallback=regroup(geometry,indices,points,buckets,parcels,geography,lower,upper,progress,fallback_review)
             audit.setdefault('frontage_attempts',[]).append(fallback_review)
             if fallback:
+                if disconnected_count(fallback['regions'],points,geography)>disconnected_before+5:
+                    fallback_review.update(state='REJECTED',reason='Would strand a service population outside its internal road network')
+                    blocked.add(key);continue
                 from .continuity import assess
                 owners={i:k for k,r in enumerate(fallback['regions']) for i in r['members']}
                 quality=assess(fallback['cut'],owners,points,buckets,geography)
                 fallback_review['boundary_quality']=quality
-                fallback_review['score_with_boundary_quality']=fallback['score']+quality['penalty']+shape_cost(fallback['regions'],points,geography)
+                from .boundary_evidence import profile
+                physical=profile(fallback['cut'],geography)
+                fallback_review['physical_boundary_strength']=physical
+                fallback_review['score_with_boundary_quality']=fallback['score']+quality['penalty']+physical['preference_cost']+shape_cost(fallback['regions'],points,geography)
                 if score(region)-fallback_review['score_with_boundary_quality']<.4:
                     fallback_review.update(state='REJECTED',reason='Street/alley quality outweighs count benefit')
                     blocked.add(key)

@@ -239,10 +239,8 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
         if seam.length<1:return 0.
         ownership={i:0 for i in left['members']}|{i:1 for i in right['members']}
         quality=assess(seam,ownership,points,buckets,geography)
-        features=geography.nearby_features(seam.buffer(8),{'wide_road','high_speed_road','controlled_road','municipal_corridor','broad_corridor'})
-        broad=unary_union([divider_line(f) for f in features]).buffer(8)
-        fraction=seam.intersection(broad,grid_size=0).length/max(seam.length,1) if not broad.is_empty else 0.
-        value=quality['penalty']+neighbourhood_division_cost(seam,left['geometry'].union(right['geometry']))+5*(1-fraction)
+        from .boundary_evidence import profile
+        value=quality['penalty']+neighbourhood_division_cost(seam,left['geometry'].union(right['geometry']))+profile(seam,geography)['preference_cost']
         quality_cache[key]=value
         return value
     def affected_score(a,b,left,right):
@@ -268,13 +266,15 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                 current_support=ra.get('continuity_support') if ra.get('continuity_corridor')==rb.get('continuity_corridor') else None
                 before=assess(seam,ownership,points,buckets,geography,current_support)
                 conflicts=len(before['street_breaks'])+len(before['alley_side_splits'])
-                excessive_weak_seam=seam.length>1.8*math.sqrt(union.area)
+                from .boundary_evidence import profile
+                physical=profile(seam,geography)
+                excessive_weak_seam=seam.length>1.8*math.sqrt(union.area) and physical.get('landuse_m',0)<seam.length*.5
                 # Valid street-following seams can still be weaker than an
                 # available broad corridor. Compare their evidence separately
                 # instead of inventing a mid-block-cut violation.
                 broad_here=geography.nearby_features(seam.buffer(8),{'wide_road','municipal_corridor','broad_corridor'})
                 broad_mask=unary_union([divider_line(f) for f in broad_here]).buffer(8)
-                weak_road_seam=seam.length>250 and seam.intersection(broad_mask).length<seam.length*.5
+                weak_road_seam=physical.get('ordinary_road_m',0)>250 and seam.intersection(broad_mask).length<seam.length*.5
                 if not conflicts and not excessive_weak_seam and not weak_road_seam:continue
                 old_cost=affected_score(a,b,ra,rb)
                 hood_edges=unary_union([h['geometry'].boundary for h in hood_values if h['geometry'].intersects(union)])
