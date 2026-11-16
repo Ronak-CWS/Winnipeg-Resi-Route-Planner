@@ -1,8 +1,9 @@
 ﻿# Monday routing in the app
 
 Open http://127.0.0.1:8765 and choose **Truck routes** after loading the service
-areas. Operating parameters are prefilled and editable. Generate both route
-plans starts one cancellable local worker. Reloading reconnects to that job.
+areas. Select Garbage, Recycling, or both in the header; both are selected by
+default. Generate starts one cancellable local job for only those streams.
+Operating parameters are prefilled and editable. Reloading reconnects to that job.
 Road calculations and complete section orders are cached.
 
 Download **Truck review HTML** for a self-contained map with stream, truck and
@@ -11,6 +12,36 @@ street names, work areas and full yard/disposal travel. The file works offline
 without a basemap provider. Click areas or addresses for details. The app also
 exports schedules, pickup order, road lines, work-area polygons and review JSON.
 Everything stays in `outputs/2026-11-04_monday_map` and its existing audit area.
+
+## Facilities and stream selection
+
+Use **Add another depot** or **Add another receiver** in Operating parameters.
+Each group offers **Choose one** or **Choose multiple**. Select at least one
+location. Added locations retain names, addresses, coordinates and receiver
+hours/onsite time when parameters are applied and the page is reloaded.
+
+The solver compares complete measured day alternatives for selected locations,
+then assigns the entire stream fleet together. Different trucks may use
+different selected locations. One truck starts and returns to the same depot
+and uses one receiver for every intermediate and final unload. Per-load
+switching between receivers is not implemented.
+
+Garbage-only and recycling-only runs omit the other stream from sequencing,
+allocation, replay, coverage results and exports. Uncalculated truck counts
+remain blank. The downloaded offline map offers only streams in that result.
+A new run replaces that day's selected scenario; it does not combine different
+runs into an assumed jointly optimized fleet.
+
+The current saved operating scenario has four local CPU workers, a 12-second
+section setting and 120 seconds per staged fleet solve. Four workers evaluate
+complete independent section/order and load/territory alternatives. A
+coordinator handles road/cache requests and complete stream allocation.
+The first complete Wednesday run has not been timed. Budget roughly one hour
+for both streams based on the comparable Monday 53m39s run, with road-cache,
+area complexity and additional facility choices affecting elapsed time.
+Selecting one stream saves its omitted search/replay work; common road
+preparation still takes time. No Wednesday truck solve was started for this UI
+change.
 
 ## Current operating inputs
 
@@ -190,7 +221,7 @@ Do not split the address universe into independently assigned geographical halve
 The queue holds at most two tasks per worker. Workers are joined after each
 phase, including cancellation/failure; there is still only one app calculation
 at a time. Completed section orders from an interrupted job can resume when the
-exact geometry/settings key and both stream coverages match; partially finished
+exact geometry/settings key and all selected stream coverages match; partially finished
 sections are solved again. The section-search setting is twelve seconds (six seconds
 for each entry/exit alternative). Compatible complete orders from a shorter
 search are retained alongside the new orders, using exact geometry/operating

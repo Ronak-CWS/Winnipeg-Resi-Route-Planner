@@ -1,5 +1,68 @@
 # Inputs for Winnipeg daily fleet sizing
 
+## Wednesday park corridor and publication repair - 2026-11-16
+
+Engine 4.6 result
+`7899007b2c8f6638593e9b22f0b307abfafc5c242396fca196067fec46f388e5`
+repairs the user's Wednesday QA. The full 22,202-address check took 503.639
+seconds, has zero native/published overlap and preserves every source point,
+20,724 serviced-parcel checks, major dividers and street/alley continuity.
+The original 1,454-address Tyndall Park cohort becomes 911/543 along the mapped
+school/park corridor. Useful children may be below the preferred minimum;
+900-1,100 is a scoring preference, not an eligibility veto on a good split.
+
+The original 30.013593 m2 published overlap consisted of four-centimetre slivers
+caused by differing shared-edge vertex spacing during inverse projection.
+Shared metric vertices are now inserted on both owners before publication,
+with unchanged real geometry and the overlap failure gate retained. Complete
+connected school/park/commercial alternatives are generated; checked short
+road-space closures cannot cross properties. Imprecise public land-use outlines
+are clipped away from serviced residential parcel components.
+
+Saved Wednesday GeoJSON/assignments/review and the live result API were checked.
+Evidence and backup remain under the existing delivery's `audit/partition_app/`,
+including `wednesday_boundary_validation_2026-11-16.json` and the offline
+before/after PNG. All 25 other root delivery files and the original intake
+workbook remain unchanged. Tuesday stays the active app day. The user still
+uploads inputs manually; no truck solve was started. Reusing the identical
+Wednesday file/range can now reuse the validated cached result.
+
+Wednesday remains PROVISIONAL: WED-005 (1,147) and WED-010 (1,975) are above the
+requested maximum. Their unresolved reasons remain visible; no overlap or
+coverage pass establishes ideal boundaries or field-verified pickup access.
+
+## Confirmed coordinates and selectable operations - 2026-11-16
+
+This supersedes the earlier pending-estimate entries below. The user corrected
+six locations and confirmed seven existing coordinates. Thursday and Friday's
+existing workbooks now contain no unconfirmed estimates. Independent saved-file
+checks verify 50 changed cells (22 Thursday, 28 Friday), all other cells and
+formatting unchanged, and Wednesday's byte-identical file. All 22,202 / 19,316 /
+19,764 weekday AddressIds and original six intake fields reconcile. The review
+keeps source labels and reviewed labels separately, including the fractional
+Selkirk and Sherbrook records. Private overrides preserve the user's exact
+coordinates and provenance. Backups, before/after evidence and validation are in
+`outputs/2026-11-16_weekday_uploads/audit/`; no files were uploaded by the agent.
+
+The user requested a reusable facility editor: add/remove depots and receivers,
+then choose one or multiple locations for a run. Multiple selected locations
+produce measured complete-day alternatives before one whole-stream fleet cover.
+Each truck starts/returns at one selected depot and uses one selected receiver
+for every load. Capacity ranges remain shared operating inputs per stream.
+
+The Truck routes header now selects Garbage, Recycling, or both. Both start
+selected. An empty selection cannot run. Unselected streams skip facility road
+snapping, section sequencing, fleet allocation and replay; their results show
+Not calculated. Scenario/cache keys, coverage checks, exports and offline truck
+review retain exactly the selected streams. Failed partitions report their
+actual error checks before a routing job can start. These controls pass an
+isolated browser/form/API check with no public requests or address uploads,
+and synthetic full pipeline checks exercise both single-stream paths.
+
+Saved accepted service areas survive an app upgrade with their original engine
+identified. Recreate service areas to apply changed boundary rules. Restarting
+does not generate routes or upload inputs.
+
 ## Productive days and sparse pockets - 2026-11-06
 
 Truck count must be calculated, never supplied as a ten-truck quota. Fleet

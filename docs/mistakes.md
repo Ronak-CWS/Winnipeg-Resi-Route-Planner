@@ -1,5 +1,59 @@
 # Winnipeg QA and mistake log
 
+## DONE B06 - Clear internal park corridor omitted from an oversized Wednesday area
+
+User QA 2026-11-16: WED-001 in result
+`d782c943502a7a6d801f52e903e39e71f9902677cba2c3d13d2e7429c0eda357`
+holds 1,454 addresses. The supplied screenshot marks the continuous school/park
+corridor from Inkster to Burrows. Compare useful children even when both fall
+below 900; the user's approximate 800/600 counts are an example, not a quota.
+The street-only Garden Grove candidates do not close through the park and
+produce no useful split or tiny remnants. Generate complete supported land-use
+alternatives, then retain all street/site/parcel/major-divider checks.
+Preserve the screenshot and candidate evidence in the existing partition audit.
+Resolved in engine 4.6, result
+`7899007b2c8f6638593e9b22f0b307abfafc5c242396fca196067fec46f388e5`.
+The full 22,202-address run took 503.639 seconds and splits the original cohort
+into 911 and 543. It preserves every source point, all 20,724 checked serviced
+parcels, major dividers and street/alley continuity. The cached before/after
+map and saved CSV/GeoJSON/review verify the affected result. Two other
+above-1,100 areas remain unresolved; this repair does not declare the whole
+weekday balanced.
+
+Cause and prevention: generate complete connected mapped land-use corridors as
+well as ordinary streets. Union duplicate outlines before making short checked
+road-space closures; omit unrelated outer-edge strips. Remove serviced property
+components from imprecise public park footprints so their outlines cannot slice
+residential lots. Never waive the parcel/street gates to accept a candidate.
+Regressions cover a below-preferred 600/800 split, a road-gap connection blocked
+by property interiors, and a public park outline intruding into a serviced lot.
+Evidence: `audit/partition_app/wednesday_boundary_validation_2026-11-16.json`
+and `wednesday_tyndall_before_after_2026-11-16.png`.
+
+## DONE D04 - Shared-edge export slivers block Wednesday routing
+
+User QA 2026-11-16 on the same saved result: address ownership passes for all
+22,202 IDs, but published WGS84 polygons overlap by 30.013593 m2 along Leila.
+The WED-009/010 and WED-009/017 slivers are about 4 cm wide, with areas
+6.323646 and 23.689947 m2. Native overlap is zero. Shared vertices must stay
+consistent through coordinate conversion; retain the material-overlap failure
+gate. Explain the actual failed check in the routing UI. Evidence:
+`audit/partition_app/wednesday_overlap_diagnostic.json` and the saved failed
+result.
+
+Resolved in the same engine 4.6 result. Native and published overlap are both
+zero; an independent intersection-in-WGS84-then-project check confirms zero
+across all 741 section pairs. Both owners now carry the same existing collinear
+metric vertices before inverse projection. Numerical validity repair preserves
+all polygon components and checks symmetric difference; real overlap is never
+trimmed by this preparation. The existing material-overlap failure gate remains.
+Regressions reproduce different nonlinear WGS84 chords from mismatched vertex
+spacing and prove actual overlaps/disjoint land remain unchanged. Saved exports
+and the live result API pass; 25 other root delivery files remain unchanged.
+Prevention: intersect published polygons before projecting the intersection.
+Projecting each polygon separately can conceal the four-centimetre export
+slivers. Show actual failed error findings before secondary count warnings.
+
 Read OPEN issues before each change and retain the prevention lessons from DONE
 issues. Example streets and section IDs identify evidence only; they must never
 be algorithm exceptions. Record the affected input/result, cause, correction and

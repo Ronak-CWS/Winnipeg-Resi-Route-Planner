@@ -24,7 +24,7 @@ running, or download the self-contained HTML from Truck routes. All 43,014
 service events reconcile. Pickup access and garbage mass limitations remain
 explicit. See the routing notes for exact results and remaining exceptions.
 
-Last reviewed: 2026-11-09. Weekday files share the existing delivery folder.
+Last reviewed: 2026-11-16. Weekday files share the existing delivery folder.
 
 Calculate how many ASL and rear-load trucks are needed to complete each
 collection day's work within the operating limits. Produce balanced routes,
@@ -70,11 +70,22 @@ establish the required truck type. Calls per route do not establish load capacit
 Wednesday, Thursday and Friday upload workbooks were prepared separately in
 `outputs/2026-11-16_weekday_uploads/`. They retain 22,202, 19,316 and 19,764
 source AddressIds respectively. All three files now have coordinates for every
-row and pass offline import validation. The user supplied Thursday's last three
-coordinates on November 16. Five Thursday and eight Friday property-level
-estimates remain explicitly labelled for confirmation and cannot create
-partition boundaries. Wednesday has no estimated coordinates.
-The user handles uploads; these workbooks were not loaded or partitioned.
+row and pass offline import validation. The user corrected six reviewed locations
+and confirmed the other seven on November 16; all three files now have zero
+unconfirmed estimates. Source address labels and AddressIds are preserved,
+including fractional labels where the user's reviewed label differs.
+The user handles uploads; the files were not uploaded by the agent.
+
+Wednesday's checked engine 4.6 result has zero overlap and splits the marked
+1,454-address school/park area into 911/543. Two other oversized areas remain
+flagged. The corrected saved result can be reused for the identical upload and
+range; the active Tuesday view was preserved.
+
+In **Truck routes**, select Garbage, Recycling, or both beside Generate. Only
+selected streams are sequenced and allocated. Operating parameters include
+**Add another depot** and **Add another receiver**, with one-location or
+multiple-location selection. Each truck starts and returns to one selected
+depot and uses one selected receiver for all its loads.
 
 Open **http://127.0.0.1:8765** while the local server is running. Double-click
 [Start Monday Partitioner.cmd](<Start Monday Partitioner.cmd>) to start it again,
