@@ -69,11 +69,11 @@ establish the required truck type. Calls per route do not establish load capacit
 
 Wednesday, Thursday and Friday upload workbooks were prepared separately in
 `outputs/2026-11-16_weekday_uploads/`. They retain 22,202, 19,316 and 19,764
-source AddressIds respectively. Wednesday and Friday have coordinates for
-every row. Thursday retains three blank coordinate pairs for 434 Salter St,
-769 Pritchard Ave and 731 Mountain Ave; those need resolving before the full
-Thursday workbook can pass the app's import validation. Property-level
-estimates are explicitly labelled and cannot create partition boundaries.
+source AddressIds respectively. All three files now have coordinates for every
+row and pass offline import validation. The user supplied Thursday's last three
+coordinates on November 16. Five Thursday and eight Friday property-level
+estimates remain explicitly labelled for confirmation and cannot create
+partition boundaries. Wednesday has no estimated coordinates.
 The user handles uploads; these workbooks were not loaded or partitioned.
 
 Open **http://127.0.0.1:8765** while the local server is running. Double-click

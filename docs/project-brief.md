@@ -1,5 +1,27 @@
 # Winnipeg residential ASL and rear-load routing
 
+## Thursday coordinates complete and estimate review - 2026-11-16
+
+This update supersedes the missing-coordinate status in the earlier delivery
+entry below. The user supplied coordinates for AddressIds 178051, 240416 and
+240504. They are recorded as User supplied in Thursday's existing workbook and
+persisted privately in `data/reference/thursday_coordinate_overrides.json`.
+All 19,316 Thursday records now have coordinates and pass offline import
+validation; Wednesday's 22,202 and Friday's 19,764 records also pass.
+
+Exactly 12 cells across the three requested Thursday rows changed. All other
+cells, formatting, table/filter definitions, panes and dimensions are preserved.
+Wednesday and Friday workbooks remain byte-identical. The previous Thursday
+delivery is backed up in the existing audit folder. Evidence:
+`audit/thursday_coordinate_update_validation.json` and `audit/file_validation.json`.
+
+Five Thursday and eight Friday estimates remain unconfirmed, with their
+approximate status unchanged. The user requested the complete list to confirm
+or correct them; it is retained privately in
+`audit/coordinate_estimates_for_confirmation.json`. Wednesday has no estimates.
+The supplied three coordinates do not confirm those other 13 locations.
+No files were uploaded and no partitions or truck routes were generated.
+
 ## Wednesday, Thursday and Friday upload files - 2026-11-16
 
 The user requested the running app and three separate Excel inputs, with
