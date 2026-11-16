@@ -65,8 +65,12 @@ def prepare(geometry,geography):
         geography.boundary_road_source=base;geography.boundary_road_tree=STRtree([r['geometry'] for r in base])
     roads=[base[int(j)]['geometry'].intersection(search) for j in geography.boundary_road_tree.query(search,predicate='intersects')]
     road_mask=unary_union(roads).buffer(8)
-    return [(label,strength,unary_union([divider_line(f).intersection(search) for f in items]).buffer(8),items)
-        for label,strength,items in tiers]+[('ordinary_road',.2,road_mask,[])]
+    prepared=[]
+    for label,strength,items in tiers:
+        sources=[dict(f,_boundary_line=divider_line(f)) for f in items]
+        mask=unary_union([f['_boundary_line'].intersection(search) for f in sources]).buffer(8)
+        prepared.append((label,strength,mask,sources))
+    return prepared+[('ordinary_road',.2,road_mask,[])]
 
 
 def profile(seam,geography,prepared=None):
@@ -78,7 +82,8 @@ def profile(seam,geography,prepared=None):
         supported=remaining.intersection(mask);lengths[label+'_m']=round(supported.length,3)
         if supported.length:
             weighted+=strength*supported.length
-            support_ids.update(f['id'] for f in items if divider_line(f).distance(supported)<8.01)
+            support_ids.update(f['id'] for f in items
+                if (f['_boundary_line'] if '_boundary_line' in f else divider_line(f)).distance(supported)<8.01)
             remaining=remaining.difference(mask)
     return {**lengths,'strength':round(weighted/seam.length,6),
         'preference_cost':round(12*(seam.length-weighted)/1000,6),

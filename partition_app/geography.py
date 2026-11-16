@@ -75,7 +75,12 @@ def shared_boundary(left,right):
     # New intersections have full precision while frozen inputs carry a 1 cm
     # model. Remove metadata only; snapping an overlay again can collapse a
     # tiny line and cause a GEOS mixed-dimension assertion.
-    shared=set_precision(left,0).boundary.intersection(set_precision(right,0).boundary)
+    return shared_linework(set_precision(left,0).boundary,set_precision(right,0).boundary)
+
+
+def shared_linework(left_boundary,right_boundary):
+    """Intersect prepared boundaries with the same line-only topology rules."""
+    shared=left_boundary.intersection(right_boundary)
     # A corner contact has zero shared length and is not a section divider.
     # Keeping isolated points in a line collection also triggers a GEOS
     # mixed-dimension overlay assertion when intersecting road buffers.

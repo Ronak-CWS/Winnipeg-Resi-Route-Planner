@@ -18,15 +18,35 @@ def frontage_groups(lines,buckets,geography):
     unsupported street or opposing-alley cut before accepting the alternative.
     """
     if not hasattr(geography,'nearby_features'):return set()
-    nearby=land_features(unary_union(lines).buffer(8),geography)
+    line=unary_union(lines)
+    # Most candidates lie on the grounds themselves. Avoid buffering a large
+    # branching outline merely to establish that zero-distance intersection.
+    # Seven metres is strictly inside the existing rounded eight-metre mask;
+    # the narrow outer band still uses that exact mask, including its corners.
+    nearby=[];mask=None
+    for feature in land_features(line.envelope.buffer(8),geography):
+        distance=feature['geometry'].distance(line)
+        if distance>8:continue
+        if distance>=7:
+            if mask is None:mask=line.buffer(8)
+            if not feature['geometry'].intersects(mask):continue
+        nearby.append(feature)
     if not nearby:return set()
-    window=unary_union([f['geometry'] for f in nearby]).buffer(55)
     roads=geography.roads
-    if getattr(geography,'land_frontage_roads',None) is not roads:
+    services=getattr(geography,'boundary_service_tree',None)
+    if (getattr(geography,'land_frontage_roads',None) is not roads
+            or getattr(geography,'land_frontage_services',None) is not services):
         geography.land_frontage_roads=roads
+        geography.land_frontage_services=services
         geography.land_frontage_tree=STRtree([r['geometry'] for r in roads])
-    eligible={roads[int(j)]['id'] for j in geography.land_frontage_tree.query(window,predicate='intersects')
-        if roads[int(j)]['geometry'].intersection(window).length>50}
+        geography.land_frontage_cache={}
+    key=tuple(sorted((f['id'],f['geometry'].wkb) for f in nearby))
+    if key not in geography.land_frontage_cache:
+        window=unary_union([f['geometry'] for f in nearby]).buffer(55)
+        geography.land_frontage_cache[key]={roads[int(j)]['id']
+            for j in geography.land_frontage_tree.query(window,predicate='intersects')
+            if roads[int(j)]['geometry'].intersection(window).length>50}
+    eligible=geography.land_frontage_cache[key]
     return {key for key in buckets if key[0]=='ordinary segment' and key[1] in eligible}
 
 

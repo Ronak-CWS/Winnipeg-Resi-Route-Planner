@@ -10,7 +10,8 @@ import hashlib
 from shapely.geometry import Point,LineString
 from shapely.ops import unary_union,nearest_points
 from shapely.strtree import STRtree
-from .geography import canonical,divider_line,shared_boundary,internal_seams,polygon_parts
+from shapely import set_precision
+from .geography import canonical,divider_line,shared_boundary,shared_linework,internal_seams,polygon_parts
 from .boundary_evidence import land_features,profile,prepare
 
 
@@ -73,11 +74,12 @@ def candidates(left,right,points,buckets,parcels,geography):
     for i in members:unit_members[dsu.find(row_cell[i])].add(i)
     masks=prepare(parent,geography);old_profile=profile(seam,geography,masks)
     tree=STRtree([units[k] for k in keys]);edges=[]
+    boundaries={k:set_precision(units[k],0).boundary for k in keys}
     for a in keys:
         for j in tree.query(units[a],predicate='intersects'):
             b=keys[int(j)]
             if b<=a:continue
-            edge=shared_boundary(units[a],units[b])
+            edge=shared_linework(boundaries[a],boundaries[b])
             if edge.length<.05:continue
             strength=profile(edge,geography,masks)['strength']
             edges.append((indices[a],indices[b],max(1,round(100*edge.length*((1-strength)**2+.02)))))
