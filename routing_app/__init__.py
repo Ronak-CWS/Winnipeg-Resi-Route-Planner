@@ -1,3 +1,3 @@
 """Day-specific section-first, directed curbside planning routes."""
 
-VERSION = "winnipeg-routing-1.6"
+VERSION = "winnipeg-routing-1.7"

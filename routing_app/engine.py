@@ -45,7 +45,7 @@ def prepare(partition, cfg, cache, progress):
         groups,anchors,reviews=make_groups(partition,roads)
         dump(anchor_path,{'groups':groups,'anchors':anchors,'reviews':reviews})
     road=OSRM(cache,'directed-v1:'+roads['source_hash'],progress,cfg['table_locations'])
-    sites={'yard':road.facility(cfg['yard']), **{s:road.facility(cfg[s]['receiver']) for s in ['garbage','recycling']}}
+    sites={'yard':road.facility(cfg['yard']), **{s:road.facility(cfg[s]['receiver']) for s in cfg.get('streams',['garbage','recycling'])}}
     core={}
     for i,g in enumerate(groups):
         progress(6+15*i/max(1,len(groups)),f"Road pass {i+1:,}/{len(groups):,}: {g['road_name']}")
@@ -102,8 +102,9 @@ def _build_library(partition,cfg,cache,road,groups,core,sites,anchor_key,progres
     for g in groups:by_section[g['section']].append(g)
     # Three-to-many / many-to-two gateway tables, never citywide all-pairs.
     progress(22,'Calculating depot and receiver travel for every road pass')
-    enter,_=road.table([sites['yard'],sites['garbage'],sites['recycling']],[g['start'] for g in groups])
-    leave,_=road.table([g['end'] for g in groups],[sites['garbage'],sites['recycling']])
+    selected=cfg.get('streams',['garbage','recycling'])
+    enter,_=road.table([sites['yard'],*[sites[s] for s in selected]],[g['start'] for g in groups])
+    leave,_=road.table([g['end'] for g in groups],[sites[s] for s in selected])
     result={'sections':{},'dispatch':{},'from_rf':{},'to_rf':{},'return':{},'key':key}
     checkpoint_path=cache/f'routing-{key}.library-progress.json'
     if checkpoint_path.exists():
@@ -111,7 +112,7 @@ def _build_library(partition,cfg,cache,road,groups,core,sites,anchor_key,progres
         if saved.get('key')==key:result['sections']=saved.get('sections',{})
     indices={g['id']:i for i,g in enumerate(groups)}
     result['dispatch']={g['id']:float(enter[0,i]) for i,g in enumerate(groups)}
-    for s,stream in enumerate(['garbage','recycling']):
+    for s,stream in enumerate(selected):
         result['from_rf'][stream]={g['id']:float(enter[s+1,i]) for i,g in enumerate(groups)}
         result['to_rf'][stream]={g['id']:float(leave[i,s]) for i,g in enumerate(groups)}
         result['return'][stream]=road.route([sites[stream],sites['yard']])['seconds']
@@ -120,7 +121,7 @@ def _build_library(partition,cfg,cache,road,groups,core,sites,anchor_key,progres
     for k,(section,units) in enumerate(sorted(by_section.items())):
         cached_section=result['sections'].get(section)
         if cached_section and all(cached_section.get(s) and all(sorted(v['groups'])==sorted(g['id'] for g in units)
-                for v in cached_section[s]) for s in ['garbage','recycling']):
+                for v in cached_section[s]) for s in selected):
             progress(24+27*k/len(by_section),f'Reusing completed section {k+1}/{len(by_section)}')
             continue
         if previous and section in previous['sections']:
@@ -129,14 +130,14 @@ def _build_library(partition,cfg,cache,road,groups,core,sites,anchor_key,progres
         progress(24+27*k/len(by_section),f"Sequencing complete section {k+1}/{len(by_section)} ({len(units)} directed road passes)")
         matrix,_=road.table([g['end'] for g in units],[g['start'] for g in units])
         jobs=[];streams=[]
-        for s,stream in enumerate(['garbage','recycling']):
+        for s,stream in enumerate(selected):
             for origin in [0,s+1]:
                 inc=[enter[origin,indices[g['id']]] for g in units]
                 out=[leave[indices[g['id']],s] for g in units]
                 jobs.append((matrix,inc,out,max(1,cfg['search_seconds_per_section']//2)));streams.append(stream)
         checkpoint=lambda:progress(None,f"Sequencing complete section {k+1}/{len(by_section)} with {worker_count(cfg.get('local_solver_workers',1))} local solver workers")
         orders=bounded_map(pool,section_job,jobs,checkpoint)
-        library={s:[] for s in ['garbage','recycling']};seen=defaultdict(set)
+        library={s:[] for s in selected};seen=defaultdict(set)
         for stream,order in zip(streams,orders):
             ids=[units[i]['id'] for i in order]
             if tuple(ids) in seen[stream]:continue
@@ -165,7 +166,7 @@ def adjacency(partition, library, road, progress):
             distance=polygons[a].distance(polygons[b])
             shared=polygons[a].boundary.intersection(polygons[b].boundary).length
             if shared<5 and distance>80:continue
-            va=library['sections'][a]['garbage'];vb=library['sections'][b]['garbage']
+            va=next(iter(library['sections'][a].values()));vb=next(iter(library['sections'][b].values()))
             # An actual road path corroborates a geographic neighbour. Endpoint
             # routes may be longer than the shared edge; retain their distances.
             options=[road.route([x['end'],y['start']]) for x in va[:1] for y in vb[:1]]
@@ -191,7 +192,7 @@ def adjacency(partition, library, road, progress):
         eligible=[p for p in pairs if p[0]<=nearest*1.35+300][:3]
         for distance,a,b in eligible:
             progress(None,f'Checking road access from isolated service area {a} to nearby {b}')
-            x=library['sections'][a]['garbage'][0];y=library['sections'][b]['garbage'][0]
+            x=next(iter(library['sections'][a].values()))[0];y=next(iter(library['sections'][b].values()))[0]
             forward=road.route([x['end'],y['start']]);reverse=road.route([y['end'],x['start']])
             graph[a].add(b);graph[b].add(a)
             links.append({'a':a,'b':b,'kind':'road_gap_connection','gap_m':round(distance,2),
@@ -217,12 +218,12 @@ def choose_variants(order,variants,connections,cfg,stream,library):
     return [p[1] for p in sorted(states[-1],key=lambda p:p[0])]
 
 
-def allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro=None,seeds=()):
+def allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro=None,seeds=(),return_candidates=False):
     with workers(cfg.get('local_solver_workers',1)) as pool:
-        return _allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro,seeds,pool)
+        return _allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro,seeds,pool,return_candidates)
 
 
-def _allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro,seeds,pool):
+def _allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro,seeds,pool,return_candidates=False):
     cfg=stream_settings(cfg,stream)
     normal_capacity,hard_capacity=load_limits(cfg,stream)
     unit={g['id']:g for g in groups};ids=sorted(library['sections'])
@@ -358,6 +359,15 @@ def _allocate(partition,cfg,stream,groups,core,library,road,graph,progress,macro
                 candidates[i]['plan']['paid_seconds']/sum(counts[s] for s in candidates[i]['sections'])))
             promising.update(eligible[:14])
         refine(promising)
+    if return_candidates:
+        # Facility alternatives contribute exact complete territories to ONE
+        # stream-wide cover. A single depot/receiver need not cover the city.
+        if macro:
+            requested={frozenset(v) for v in [*seeds,*cohesive]}
+            refine(i for i,c in enumerate(candidates) if len(c['sections'])==1 or frozenset(c['sections']) in requested)
+        exact=[c for i,c in enumerate(candidates) if not macro or i in done]
+        return exact,{'evaluated_orders':tested,'physical_site_territories':refined,
+            'candidate_territories':len(territories),'whole_parent_candidate_count':len(cohesive)}
     while True:
         chosen,status=fleet_cover(ids,candidates,cfg['fleet_search_seconds'],parent_sections=parents)
         pending=[i for i,c in enumerate(candidates) if any(c is selected for selected in chosen) and i not in done]
@@ -520,10 +530,12 @@ def replay(candidate,stream,index,cfg,unit,core,anchors,sites,road,pass_edges=No
 
 def run(partition,cfg,cache,progress=lambda *a:None):
     cfg=validate_settings(cfg)
-    if partition['status']=='FAILED':raise ValueError('Fix the failed partition before routing.')
+    from .validation import partition_failure
+    failure=partition_failure(partition)
+    if failure:raise ValueError(failure)
     road=None;started=perf_counter();timings=[]
     allocation_code=digest([hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
-        for name in ['engine.py','optimizer.py','parallel.py']])
+        for name in ['engine.py','optimizer.py','parallel.py','facilities.py','facility_search.py']])
     solve_settings={k:v for k,v in cfg.items() if not k.endswith('_comparison')}
     def timed(stage,operation,iteration=0):
         begin=perf_counter()
@@ -539,7 +551,7 @@ def run(partition,cfg,cache,progress=lambda *a:None):
             site_library=timed('pickup_site_gateways',lambda:expand_library(library,atoms,expansion,road,sites,cache,progress),iteration)
             graph,links=timed('adjacency',lambda:adjacency(work_partition,library,road,progress),iteration)
             plans={};overlong=set();underfilled=set();reduction_seeds=set()
-            for stream in ['garbage','recycling']:
+            for stream in cfg['streams']:
                 atom_owner={g['id']:g['section'] for g in atoms}
                 seeds=[sorted({atom_owner[x] for x in c['sequence']}) for c in previous_plans.get(stream,[])]
                 allocation_key=digest(['fleet-window-7-consolidation',allocation_code,library['key'],solve_settings,stream,links,seeds,
@@ -548,7 +560,9 @@ def run(partition,cfg,cache,progress=lambda *a:None):
                 if allocation_path.exists():
                     saved=json.loads(allocation_path.read_text());chosen,search=saved['chosen'],saved['search']
                 else:
-                    chosen,search=timed(stream+'_allocation',lambda:allocate(work_partition,cfg,stream,atoms,atom_core,site_library,road,graph,progress,macro=(groups,core,library),seeds=seeds),iteration)
+                    from .facility_search import allocate as allocate_facilities
+                    chosen,search=timed(stream+'_allocation',lambda:allocate_facilities(work_partition,cfg,stream,atoms,atom_core,site_library,road,graph,progress,
+                        macro=(groups,core,library),seeds=seeds,sites=sites,cache=cache,anchor_key=anchor_key,expansion=expansion),iteration)
                     dump(allocation_path,{'chosen':chosen,'search':search})
                 plans[stream]=(chosen,search)
                 overlong.update(s for c in chosen if c['plan']['late_seconds']>0 for s in c['sections'])
@@ -612,7 +626,15 @@ def run(partition,cfg,cache,progress=lambda *a:None):
             selected=[]
             for n,candidate in enumerate(sorted(chosen,key=lambda c:tuple(c['sections'])),1):
                 progress(None,f"Replaying {stream} truck {n}/{len(chosen)} on local roads")
-                selected.append(timed(stream+'_replay',lambda:replay(candidate,stream,n,cfg,unit,atom_core,anchors,sites,road,edges),best_iteration['iteration']))
+                from .facilities import case_settings
+                facility=candidate.get('facility')
+                route_cfg=case_settings(cfg,stream,facility['depot'],facility['receiver']) if facility else cfg
+                route_sites={**sites,**facility['sites']} if facility else sites
+                route=timed(stream+'_replay',lambda:replay(candidate,stream,n,route_cfg,unit,atom_core,anchors,route_sites,road,edges),best_iteration['iteration'])
+                route.update(depot_name=route_cfg['yard']['name'],receiver_name=route_cfg[stream]['receiver']['name'],
+                    facility_sites={'yard':route_sites['yard'],stream:route_sites[stream]})
+                if facility:route.update(depot_id=facility['depot']['id'],receiver_id=facility['receiver']['id'])
+                selected.append(route)
             routes.extend(selected)
             streams[stream]={'trucks':len(selected),'pickups':sum(r['pickups'] for r in selected),
                 'loads':sum(r['load_count'] for r in selected),'km':sum(r['km'] for r in selected),

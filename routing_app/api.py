@@ -64,12 +64,14 @@ def export_files(result):
     schedules=[];stops=[];features=[]
     for route in result['routes']:
         schedules.append({'CollectionDay':day,'Truck':route['id'],'Stream':route['stream'],'Equipment':route['equipment'],
+            'Depot':route.get('depot_name',result.get('settings',{}).get('yard',{}).get('name','')),
+            'Receiver':route.get('receiver_name',result.get('settings',{}).get(route['stream'],{}).get('receiver',{}).get('name','')),
             'Sections':' / '.join(route.get('planning_sections',route['sections'])),
             'WorkAreas':' / '.join(route['sections']),'Pickups':route['pickups'],'Loads':route['load_count'],
             'Start':route['start'],'Return':route['return'],'PaidHours':round(route['paid_seconds']/3600,3),
             'OvertimeMinutes':round(route['overtime_seconds']/60,1),'Kilometres':round(route['km'],2),
             'Status':route['status'],'ActivePickupsPerMinute':round(route['active_pickups_per_minute'],2)})
-        stops.extend({'CollectionDay':day,**s} for s in route['stops']);features.extend(route['geometry']['features'])
+        stops.extend({'CollectionDay':day,'Depot':schedules[-1]['Depot'],'Receiver':schedules[-1]['Receiver'],**s} for s in route['stops']);features.extend(route['geometry']['features'])
     return {f'{label}_route_schedules.csv':csv_bytes(schedules),f'{label}_route_pickup_order.csv':csv_bytes(stops),
         f'{label}_route_lines.geojson':json.dumps({'type':'FeatureCollection','day':day,'features':features},separators=(',',':')).encode(),
         f'{label}_route_work_areas.geojson':json.dumps({**result.get('work_areas',{'type':'FeatureCollection','features':[]}),'day':day},separators=(',',':')).encode(),
@@ -150,6 +152,9 @@ def start(handler,host,payload):
     with host.LOCK:
         if host.STATE['active']:return handler.reply({'error':'A local calculation is already running.','job_id':host.STATE['active']},409)
         partition=host.load_result(payload.get('partition_key') or host.STATE['current'] or '')
+        from .validation import partition_failure
+        failure=partition_failure(partition)
+        if failure:return handler.reply({'error':failure},422)
         cfg=settings(payload.get('settings'))
         dump(host.CACHE/'routing-settings.json',cfg)
         key=key_for(partition,cfg);job_id=uuid.uuid4().hex

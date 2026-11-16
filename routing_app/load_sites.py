@@ -40,10 +40,11 @@ def expand_library(library,atoms,expansion,road,sites,cache,progress):
         gateways=json.loads(path.read_text())
     else:
         progress(None,'Calculating receiver access at physical pickup sites; street ownership stays intact')
-        enter,_=road.table([sites['yard'],sites['garbage'],sites['recycling']],[a['start'] for a in atoms])
-        leave,_=road.table([a['end'] for a in atoms],[sites['garbage'],sites['recycling']])
+        selected=list(library['from_rf'])
+        enter,_=road.table([sites['yard'],*[sites[s] for s in selected]],[a['start'] for a in atoms])
+        leave,_=road.table([a['end'] for a in atoms],[sites[s] for s in selected])
         gateways={'dispatch':{a['id']:float(enter[0,i]) for i,a in enumerate(atoms)},'from_rf':{},'to_rf':{}}
-        for s,stream in enumerate(['garbage','recycling']):
+        for s,stream in enumerate(selected):
             gateways['from_rf'][stream]={a['id']:float(enter[s+1,i]) for i,a in enumerate(atoms)}
             gateways['to_rf'][stream]={a['id']:float(leave[i,s]) for i,a in enumerate(atoms)}
         from .engine import dump

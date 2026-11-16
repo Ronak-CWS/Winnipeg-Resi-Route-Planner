@@ -5,6 +5,8 @@ from partition_app.inputs import InputError
 
 
 DEFAULTS = {
+    "streams": ["garbage", "recycling"],
+    "facility_options": None,
     "crew_start": "06:15", "pretrip_minutes": 15, "break_minutes": 30,
     "unpaid_lunch_minutes": 0, "posttrip_minutes": 0, "fueling_minutes": 0,
     "preferred_paid_hours": 8, "earliest_return":"14:30", "preferred_return":"15:30", "latest_return": "16:45",
@@ -100,6 +102,13 @@ def settings(payload=None):
             else:
                 dest[k] = v
     merge(result, payload or {})
+    streams=result['streams']
+    if (not isinstance(streams,list) or not streams or
+            any(s not in ['garbage','recycling'] for s in streams) or len(set(streams))!=len(streams)):
+        raise InputError('Select Garbage, Recycling, or both collection streams.')
+    result['streams']=[s for s in ['garbage','recycling'] if s in streams]
+    from .facilities import normalize
+    normalize(result)
     # Historical scenarios without a preferred window keep their original
     # earliest return; loading them must not silently tighten their constraints.
     if 'preferred_return' not in payload and ('earliest_return' in payload or 'latest_return' in payload):

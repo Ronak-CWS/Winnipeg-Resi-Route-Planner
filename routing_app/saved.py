@@ -16,7 +16,7 @@ def section_library_key(anchor,cfg,sites,budget=None,version='library-2-portfoli
 def retain_section_variants(current,previous,expected):
     """Keep new orders and up to two compatible earlier complete orders."""
     result={};expected=sorted(expected)
-    for stream in ['garbage','recycling']:
+    for stream in current:
         result[stream]=[];seen=set()
         for variant in [*current.get(stream,[]),*previous.get(stream,[])[:2]]:
             order=tuple(variant['groups'])
@@ -48,6 +48,7 @@ def saved_library(result,cache):
     if set(library['sections'])!=set(parents):raise ValueError('Saved library has different work areas.')
     for section,variants in library['sections'].items():
         expected=sorted(g['id'] for g in groups if g['section']==section)
-        if not all(sorted(v['groups'])==expected for stream in ['garbage','recycling'] for v in variants[stream]):
+        if not all(variants.get(stream) and all(sorted(v['groups'])==expected for v in variants[stream])
+                for stream in result.get('streams',cfg.get('streams',['garbage','recycling']))):
             raise ValueError('Saved library has different road passes.')
     return library,groups,anchors_record['anchors']
