@@ -80,7 +80,7 @@ def boundary_merge_cost(shared,geography):
     return max(costs,default=0)
 
 
-def rebalance(occupied, members, nearby_links, points, buckets, parcels, geography, preferences, ledger, progress, boundary_evidence, natural_only=False):
+def rebalance(occupied, members, nearby_links, points, buckets, parcels, geography, preferences, ledger, progress, boundary_evidence, natural_only=False,optional_deadline=None):
     # Derived urban-corridor corrections need two useful natural children. They
     # must not carve an 80-house remnant out of an otherwise useful community.
     lower,upper=(400,799) if natural_only else (preferences['preferred_minimum'],preferences['maximum_addresses'])
@@ -359,7 +359,7 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
         coalesce()
     if not natural_only:
         from .landuse_repair import improve as improve_landuse
-        improved,audit['landuse_quality']=improve_landuse(list(regions.values()),points,buckets,parcels,geography,lower,upper,ledger,boundary_evidence,progress)
+        improved,audit['landuse_quality']=improve_landuse(list(regions.values()),points,buckets,parcels,geography,lower,upper,ledger,boundary_evidence,progress,deadline=optional_deadline)
         regions=dict(enumerate(improved))
     if not natural_only:
         from .pockets import separate_sparse_pockets,consolidate_sparse_pockets

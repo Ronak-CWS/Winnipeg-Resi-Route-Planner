@@ -1,15 +1,16 @@
 """Prefer supported non-residential edges over weaker existing road seams."""
 import hashlib
+import time
 from shapely.ops import unary_union
 from .geography import shared_boundary,canonical
 from .boundary_evidence import profile,land_features
 
 
-def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence,progress):
+def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence,progress,deadline=None):
     from .balancing import count_cost,hard_separator
     from .continuity import assess,neighbourhood_division_cost,split_frontage_buckets
     from .landuse_candidates import candidates
-    audit={'candidates':0,'changes':[],'rejections':[]};tested=set()
+    audit={'candidates':0,'changes':[],'rejections':[],'time_budget_reached':False};tested=set()
     def pair_cost(left,right):
         seam=shared_boundary(left['geometry'],right['geometry'])
         if seam.length<1:return 0.
@@ -19,6 +20,9 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
         from .service_shape import cost as shape_cost
         return count_cost(len(left['members']),lower,upper)+count_cost(len(right['members']),lower,upper)+shape_cost([left,right],points,geography)+pair_cost(left,right)+sum(pair_cost(r,left)+pair_cost(r,right) for k,r in enumerate(regions) if k not in {a,b})
     for _ in range(len(regions)):
+        if deadline is not None and time.monotonic()>=deadline:
+            audit['time_budget_reached']=True
+            return regions,audit
         pending=[]
         for a,left in enumerate(regions):
             for b in range(a+1,len(regions)):
@@ -33,6 +37,9 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
                 pending.append((-nonmajor_road,a,b,key))
         changed=False
         for position,(_,a,b,key) in enumerate(sorted(pending),1):
+            if deadline is not None and time.monotonic()>=deadline:
+                audit.update(time_budget_reached=True,remaining_pairs=len(pending)-position+1)
+                return regions,audit
             left,right=regions[a],regions[b]
             if key!=tuple(sorted((canonical(left['geometry']),canonical(right['geometry'])))):continue
             tested.add(key);parent=left['geometry'].union(right['geometry'])

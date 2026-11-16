@@ -259,6 +259,18 @@ def test_material_serviced_parcel_is_not_cut():
     assert result["validation"]["material_parcel_cuts"]==0
 
 
+def test_optional_polishing_limit_keeps_final_validation_and_preserved_ownership():
+    data=sample_dataset([(i,-20 if i%2 else 20,0,'Exact address','') for i in range(80)])
+    full=plan(data,SmallGeography(parcel=True),minimum=50,maximum=100)
+    limited=plan(data,SmallGeography(parcel=True),minimum=50,maximum=100,optional_deadline=-1)
+    assert limited['validation']==full['validation']
+    assert limited['areas']==full['areas'] and limited['points']==full['points']
+    assert limited['range_balancing']['landuse_quality']['time_budget_reached']
+    assert any(f['code']=='OPTIONAL_BOUNDARY_SEARCH_LIMIT' for f in limited['findings'])
+    assert limited['validation']['material_parcel_cuts']==0
+    assert limited['validation']['exactly_once']
+
+
 def test_estimates_do_not_create_or_move_boundaries_but_retain_count():
     geo=SmallGeography()
     result=plan(sample_dataset([(1,-20,0,"Exact address","site"),(2,20,0,"Approximate site centre","site")]),geo)

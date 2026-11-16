@@ -602,7 +602,7 @@ def merge_target_regions(current, counts, dsu, cells, geography, target, ceiling
     return nearby_links
 
 
-def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15, minimum=None, maximum=None, use_mapped_alleys=False):
+def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15, minimum=None, maximum=None, use_mapped_alleys=False,optional_deadline=None):
     preferences = address_preferences(target, tolerance, minimum, maximum)
     planning_target=preferences["target_addresses"]
     planning_ceiling=preferences["maximum_addresses"]
@@ -819,7 +819,10 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
     if target:
         members=defaultdict(list)
         for i in trusted:members[dsu.find(row_cell[i])].append(i)
-        planned,balance_report=rebalance(occupied,members,nearby_links,points,buckets,serviced_parcels,geography,preferences,ledger,progress,refinement_evidence)
+        planned,balance_report=rebalance(occupied,members,nearby_links,points,buckets,serviced_parcels,geography,preferences,ledger,progress,refinement_evidence,optional_deadline=optional_deadline)
+        if balance_report.get('landuse_quality',{}).get('time_budget_reached'):
+            findings.append({'code':'OPTIONAL_BOUNDARY_SEARCH_LIMIT','severity':'warning',
+                'message':'Further school/park boundary comparisons reached the time budget. Some alternatives remain untested; all final ownership, parcel, street/alley and overlap checks still apply.'})
         occupied={k:r['geometry'] for k,r in enumerate(planned)}
         row_cell={i:k for k,r in enumerate(planned) for i in r['members']}
         dsu=DisjointSet(len(planned));nearby_links={k:r['links'] for k,r in enumerate(planned) if r['links']}

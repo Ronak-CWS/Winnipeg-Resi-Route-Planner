@@ -108,7 +108,10 @@ def run_job(job_id, dataset, target, key, tolerance=15, minimum=None, maximum=No
             result = load_result(key)
             progress(96, "Reusing the identical input and settings; no solve or map reload")
         else:
-            result = plan(dataset, get_geography(), target, progress, tolerance, minimum, maximum, use_mapped_alleys)
+            # Optional polishing must leave time for mandatory final validation.
+            # Its completed state is retained; errors still block publication.
+            result = plan(dataset, get_geography(), target, progress, tolerance, minimum, maximum, use_mapped_alleys,
+                          optional_deadline=started_at+PARTITION_SECONDS-300)
             result["key"] = key
             CACHE.mkdir(parents=True, exist_ok=True)
             write_atomic(CACHE / f"{key}.result.json", json_text(result))
