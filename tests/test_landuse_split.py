@@ -1,0 +1,49 @@
+from types import SimpleNamespace
+from shapely.geometry import box,Point,LineString
+from shapely.strtree import STRtree
+from partition_app.landuse_split import between_completions
+from partition_app.balancing import rebalance
+
+
+def geography(features=(),parcels=(),roads=()):
+    g=SimpleNamespace(features=list(features),parcels=list(parcels),roads=list(roads))
+    g.base_roads=g.roads;g.road_tree=STRtree([r['geometry'] for r in roads])
+    g.parcel_tree=STRtree([p['geometry'] for p in parcels])
+    g.nearby_features=lambda geometry,categories:[f for f in g.features if f['category'] in categories and f['geometry'].intersects(geometry)]
+    return g
+
+
+def test_complete_park_corridor_can_split_1400_into_600_and_800_below_a_soft_900_minimum():
+    points=[Point(100+(i%30)*20,100+(i//30)*20) for i in range(600)]
+    points += [Point(1100+(i%40)*20,50+(i//40)*40) for i in range(800)]
+    park={'id':'mapped-grounds','category':'park','name':'Grounds','geometry':box(980,0,1020,1000)}
+    g=geography([park]);g.boundary_service_tree=STRtree(points)
+    preferences={'preferred_minimum':900,'maximum_addresses':1100}
+    result,audit=rebalance({0:box(0,0,2000,1000)},{0:set(range(1400))},{},points,{}, {},g,
+        preferences,[],lambda *args:None,{})
+    assert sorted(len(r['members']) for r in result)==[600,800]
+    assert set().union(*(r['members'] for r in result))==set(range(1400))
+    assert sum(r['geometry'].area for r in result)==2_000_000
+    assert audit['splits']==1
+
+
+def test_an_empty_road_gap_can_join_mapped_vertices_but_a_property_interior_cannot():
+    parent=box(0,0,200,200);left=box(10,0,80,40);right=box(10,60,80,110)
+    road={'id':'public-road','name':'Road','type':'STREET','geometry':LineString([(0,50),(200,50)])}
+    assert between_completions(parent,left,right,geography(roads=[road]))
+    parcel={'id':'property','geometry':box(0,40,90,60)}
+    assert not between_completions(parent,left,right,geography(parcels=[parcel],roads=[road]))
+
+
+def test_public_park_outline_cannot_slice_a_serviced_residential_property():
+    points=[Point(100+(i%30)*20,100+(i//30)*20) for i in range(600)]
+    points += [Point(1100+(i%40)*20,50+(i//40)*40) for i in range(800)]
+    points.append(Point(1030,420))
+    parcel={'id':'residential','geometry':box(1010,400,1050,440)}
+    park={'id':'imprecise-public-park','category':'park','name':'Grounds','geometry':box(980,0,1020,1000)}
+    g=geography([park],[parcel]);g.boundary_service_tree=STRtree(points)
+    result,audit=rebalance({0:box(0,0,2000,1000)},{0:set(range(len(points)))},{},points,{},
+        {'residential':parcel},g,{'preferred_minimum':900,'maximum_addresses':1100},[],lambda *a:None,{})
+    assert sorted(len(r['members']) for r in result)==[600,801]
+    assert sum(parcel['geometry'].intersection(r['geometry']).area>4 for r in result)==1
+    assert audit['splits']==1

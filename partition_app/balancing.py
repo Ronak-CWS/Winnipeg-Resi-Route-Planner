@@ -150,6 +150,9 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
                     |{'state':'CANDIDATE','reason':'Finite supported corridor inventoried for a useful natural or range division.'})
                 recorded.add(f['id'])
         candidates=[(f,) for f in base]
+        if not natural_only:
+            from .landuse_split import corridors as landuse_corridors
+            candidates.extend((f,) for f in landuse_corridors(geometry,geography))
         roads=[f for f in base if f['category']!='community'][:10]
         if not natural_only:candidates.extend(list(combinations(roads,2))[:24])
         if not natural_only:
@@ -181,7 +184,7 @@ def rebalance(occupied, members, nearby_links, points, buckets, parcels, geograp
             for f in chosen:
                 # Eligibility depends on actual road alignment, including a
                 # municipal edge that genuinely follows a mapped street.
-                if f['category'] not in {'community','wide_road','municipal_corridor','broad_corridor','street_corridor'}:continue
+                if f['category'] not in {'community','wide_road','municipal_corridor','broad_corridor','street_corridor','landuse_corridor'}:continue
                 line=divider_line(f)
                 line_mask=line.buffer(8)
                 for j in road_tree.query(line_mask,predicate='intersects'):
