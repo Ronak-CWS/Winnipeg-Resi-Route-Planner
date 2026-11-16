@@ -1,0 +1,195 @@
+{
+  "project": "winnipeg-residential-route-planner",
+  "reviewed_on": "2026-11-06",
+  "status": "fleet_efficiency_revision_in_progress",
+  "source": {
+    "workbook": "data/source/Winnipeg - Area 1 addresses.xlsx",
+    "sha256": "fbff92cbe50d4a56aa39883a8fafbe0de97ac3a542c47df2f02a8e106c18d5a2",
+    "master_sheet": "Sheet1",
+    "subset_sheet": "Monday",
+    "id_column": "AddressId",
+    "scope_completeness_confirmed": false,
+    "column_e_meaning_confirmed": false
+  },
+  "reported": {
+    "user_truck_count": 45,
+    "email": {
+      "received_on": "2026-10-27",
+      "email_date": null,
+      "asl_routes": 20,
+      "rear_load_routes": 12,
+      "asl_average_calls_per_route": 1300,
+      "rear_load_average_calls_per_route": 1500,
+      "preserve_miller_areas_where_practical": true,
+      "applicability": "historical_context_superseded_by_planning_policy"
+    },
+    "fleet_status": "45 trucks available, confirmed by user"
+  },
+  "unconfirmed": {
+    "latest_return_is_yard_arrival_or_all_work_complete": null,
+    "garbage_mass_per_pickup_for_9_tonne_validation": null,
+    "pickup_point_field_confirmation": null,
+    "truck_access_restrictions": null,
+    "remote_outlier_service_exception_policy": null,
+    "spares_by_equipment_type": null
+  },
+  "planning_policy": {
+    "source": "User clarification in conversation on 2026-10-27",
+    "objective": "calculate_required_daily_operating_fleet_by_type",
+    "design_routes_from_service_addresses": true,
+    "miller_maps_required": false,
+    "preserve_miller_boundaries": false,
+    "fixed_route_count": null,
+    "required_truck_count": null,
+    "reported_fleet_comparison_count": 45,
+    "reported_fleet_is_hard_cap": false,
+    "email_route_counts_and_call_targets": "historical_comparison_only",
+    "address_access_classification_required": true,
+    "collection_access_values": [
+      "alley",
+      "curbside",
+      "other",
+      "unconfirmed"
+    ],
+    "access_does_not_determine_truck_type": true,
+    "outputs": [
+      "operating_trucks_by_day_and_type",
+      "peak_simultaneous_fleet",
+      "spare_allowance_separately",
+      "route_assignments",
+      "complete_route_hours",
+      "loads_and_dump_visits",
+      "ordered_collection_stops",
+      "route_maps",
+      "comparison_with_available_45_trucks"
+    ]
+  },
+  "operations_request": {
+    "question_count": 8,
+    "user_requested_omissions": [
+      "collection_scope_and_calendar_question",
+      "review_deadline_and_output_question",
+      "truck_specs_payload_crew_and_fleet_split_sentence"
+    ],
+    "omitting_questions_does_not_confirm_missing_values": true
+  },
+  "current_operating_input_file": "data/reference/monday_routing_operating_inputs_2026-11-05.json",
+  "initial_unconfirmed_2026_10_27": {
+    "call_definition": null,
+    "collection_streams": null,
+    "daily_asl_fleet": null,
+    "daily_rear_load_fleet": null,
+    "crews": null,
+    "address_service_methods": null,
+    "start_locations": null,
+    "end_locations": null,
+    "receivers_by_stream": null,
+    "facility_hours": null,
+    "queue_unload_minutes": null,
+    "capacity_by_type_and_stream": null,
+    "shift_hours": null,
+    "departure_time": null,
+    "breaks_pre_post_trip_minutes": null,
+    "service_seconds_by_type": null,
+    "collection_days_may_change": null,
+    "yard_waste_calendar": null,
+    "street_and_access_restrictions": null,
+    "city_submission_date": null,
+    "go_live_date": null,
+    "operations_reviewer": null,
+    "load_or_dump_trip_restrictions": null,
+    "address_collection_access_by_stream": null,
+    "address_actual_pickup_locations": null,
+    "truck_compatibility_by_address": null,
+    "truck_specifications_by_type": null,
+    "carts_bins_sizes_by_address": null,
+    "service_frequencies": null,
+    "spares_in_reported_fleet": null
+  },
+  "confirmed_from_user": {
+    "Monday_pickups_per_AddressId_per_stream": 1,
+    "streams": [
+      "garbage",
+      "recycling"
+    ],
+    "pickup_seconds_excluding_drive": [
+      10,
+      15
+    ],
+    "active_collection_pickups_per_minute_including_drive": [
+      3,
+      3.5
+    ],
+    "stream_plans_separate": true,
+    "reported_available_trucks_for_comparison": 45,
+    "details": "data/reference/monday_routing_operating_inputs_2026-11-05.json",
+    "break_minutes_total": 30,
+    "unpaid_lunch_minutes": 0,
+    "posttrip_minutes": 0,
+    "routing_access_scenario": "all_curbside",
+    "right_side_collection_required": true,
+    "equipment_by_stream": {
+      "garbage": "ASL",
+      "recycling": "rear load"
+    },
+    "recycling_receiver_address": "335 Mazenod Rd, Winnipeg, MB R2J 3S8",
+    "preferred_zero_overtime_finish": "14:15"
+  },
+  "routing_structure": {
+    "section_first": true,
+    "one_truck_per_section": false,
+    "same_truck_resumes_after_capacity_driven_rf": true,
+    "section_and_load_searches_not_independently_chunked_for_table_limits": true,
+    "osrm_table_limit_may_be_resized_after_preflight": true,
+    "garbage_rf": "Brady Landfill",
+    "recycling_rf": "GFL MRF (formerly Canada Fibers), 335 Mazenod Rd",
+    "planning_section_geometry_preserved": true,
+    "overlong_sections_may_share_trucks": true,
+    "clean_adjacent_work_areas_required": true,
+    "whole_directed_road_pass_per_truck": true,
+    "receiver_breaks_between_physical_sites": true
+  },
+  "routing_app": {
+    "url": "http://127.0.0.1:8765",
+    "version": "winnipeg-routing-1.2",
+    "defaults": "routing_app/settings.py",
+    "docs": "docs/routing-app.md",
+    "gate_assignment_outside_scope": true,
+    "first_run_total_trucks": 56,
+    "feasible_fleet_recommendation": false,
+    "current_tested_trucks": 59,
+    "current_garbage_trucks": 30,
+    "current_recycling_trucks": 29,
+    "latest_return_targets_met": true
+  },
+  "current_routing_policy": {
+    "objective": "minimum_trucks_then_paid_time_within_return_window",
+    "earliest_return": "15:00",
+    "latest_return": "16:00",
+    "garbage_load_range": [
+      580,
+      650
+    ],
+    "garbage_load_target": 615,
+    "recycling_load_range": [
+      1200,
+      1350
+    ],
+    "recycling_load_target": 1300,
+    "hard_caps": {
+      "garbage": 650,
+      "recycling": 1350
+    },
+    "recycling_pickup_seconds": [
+      7,
+      10
+    ],
+    "garbage_combined_pickups_per_minute": [
+      3,
+      3.5
+    ],
+    "multiple_nearby_sections_per_truck": true,
+    "carry_unused_capacity_across_section_seams": true,
+    "artificial_waiting_or_dump_trips": false
+  }
+}

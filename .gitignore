@@ -1,0 +1,15 @@
+# Private inputs and generated artifacts stay local.
+/data/
+/outputs/
+/cache/
+/road_data/
+/.venv/
+/node_modules/
+/.env
+/.env.*
+__pycache__/
+.pytest_cache/
+*.pyc
+*.xlsx
+*.xls
+~$*
