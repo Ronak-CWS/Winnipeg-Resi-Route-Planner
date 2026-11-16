@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Winnipeg · Monday addresses</title>
+<style>__LEAFLET_CSS__</style>
+<style>__MAPLIBRE_CSS__</style>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:14px/1.5 Arial,sans-serif;color:#182c40;background:#f7f9fc}
+body{display:flex;flex-direction:column}header{background:#142d46;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+h1{margin:0;font-size:23px;font-weight:600;letter-spacing:-.4px}.eyebrow{color:#c0d1e2;font-size:12px;letter-spacing:1.4px;text-transform:uppercase;margin-bottom:2px}
+header p{margin:0;color:#dbe6f0}.downloads{display:flex;gap:8px;flex-wrap:wrap}.downloads a{color:#fff;text-decoration:none;border:1px solid #617b94;border-radius:5px;padding:7px 11px;font-size:13px}
+.downloads a:hover{background:#2a4967}main{flex:1;display:grid;grid-template-columns:370px 1fr;min-height:0}
+aside{display:flex;flex-direction:column;background:#fff;border-right:1px solid #d9e1e9;min-height:0}.controls{padding:20px 20px 15px;border-bottom:1px solid #e3e8ef}
+.totals{font-size:20px;font-weight:600;letter-spacing:-.3px}.subtle{font-size:12px;color:#51677b}.counts{margin:4px 0 13px}.counts span{white-space:nowrap}
+label{display:block;font-size:12px;font-weight:600;margin:11px 0 5px}input,select,button{font:inherit}input,select{width:100%;padding:9px 10px;border:1px solid #bdcad8;border-radius:5px;background:#fff;color:#182c40}
+input:focus,select:focus,button:focus{outline:2px solid #2563eb;outline-offset:2px}.actions{display:flex;gap:8px;margin-top:12px}button{cursor:pointer;border:1px solid #c5d1dc;border-radius:5px;background:#f6f8fb;color:#203c55;padding:7px 10px;font-size:12px}button:hover{background:#eaf0f6}
+#result-count{padding:11px 20px;font-size:12px;color:#51677b;background:#f5f8fb;border-bottom:1px solid #e3e8ef}.results{flex:1;overflow:auto}.record{padding:11px 20px;border:0;border-bottom:1px solid #e9eef3;display:block;text-align:left;background:#fff;width:100%;border-radius:0;font-size:13px}.record:hover,.record.selected{background:#edf4ff}.record .address{font-weight:600;font-size:13px;display:block}.record .detail{font-size:11px;color:#536a7f;display:block;margin-top:2px}
+.record .status{font-size:11px;display:block;margin-top:3px}.exact{color:#2563eb}.building{color:#127c75}.approximate{color:#a75a09}.missing{color:#b42318}.more{margin:12px 20px}.empty{padding:18px 20px;color:#51677b}
+.supplied{color:#7c3aed}
+.map-wrap{position:relative;min-height:280px}#map{height:100%;width:100%;background:#e5edf2}.legend{position:absolute;z-index:500;bottom:32px;left:14px;background:#fff;padding:9px 12px;border-radius:5px;box-shadow:0 1px 5px #142d4630;font-size:11px;display:flex;gap:14px;flex-wrap:wrap}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}.basemap-message{position:absolute;z-index:500;right:12px;top:12px;background:#fff;padding:8px 11px;border-radius:4px;font-size:12px;box-shadow:0 1px 5px #142d4620;max-width:230px}
+footer{padding:9px 20px;background:#fff;border-top:1px solid #d9e1e9;font-size:11px;color:#51677b;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}footer a{color:#315f8e}
+.popup-title{font-weight:600;font-size:14px;margin-bottom:6px}.popup-record{margin:8px 0;border-bottom:1px solid #e4eaf0;padding-bottom:8px}.popup-note{font-size:11px;color:#51677b}.leaflet-popup-content{max-height:330px;overflow:auto}.leaflet-container{font-family:Arial,sans-serif}.leaflet-control-attribution{font-size:10px}
+@media(max-width:800px){header{padding:12px 16px}h1{font-size:19px}.downloads a{padding:5px 8px}main{grid-template-columns:300px 1fr}.controls{padding:14px}.record{padding:10px 14px}.totals{font-size:17px}.legend{max-width:230px;gap:4px 12px}}
+@media(max-width:590px){body{height:auto;min-height:100vh}header{align-items:flex-start;flex-direction:column;gap:10px}header p{font-size:12px}main{display:flex;flex-direction:column}.map-wrap{height:58vh;order:-1;flex:none}aside{height:440px;border-right:0}.controls{padding:12px 16px}.counts{margin:1px 0 7px}.controls label{margin-top:6px}.legend{bottom:28px;left:8px}.basemap-message{right:8px;top:8px;font-size:11px}.actions{margin-top:9px}.downloads{gap:6px}footer{padding:9px 16px}}
+</style>
+</head>
+<body>
+<header><div><div class="eyebrow">Winnipeg residential</div><h1>Monday address map</h1><p>Monday sheet · Area 1 intake · November 4, 2026</p></div><nav class="downloads" aria-label="Download address data"><a href="Monday_addresses_lat_long.xlsx">Excel</a><a href="Monday_addresses_lat_long.csv" download>CSV</a><a href="Monday_addresses.geojson" download>GeoJSON</a></nav></header>
+<main>
+<aside aria-label="Monday address search"><div class="controls"><div class="totals" id="totals"></div><div class="subtle counts" id="counts"></div><label for="search">Find an address, AddressId or postal code</label><input id="search" type="search" placeholder="e.g. 380 Thurso or 20" autocomplete="off"><label for="status">Coordinate match</label><select id="status"><option value="">All Monday records</option><option value="Exact address">Exact address</option><option value="Building address">Building address</option><option value="Approximate site centre">Approximate site centre</option><option value="User supplied">User supplied</option><option value="Not found">Not found</option></select><div class="actions"><button id="fit">Fit results</button><button id="reset">Show all Monday</button></div></div><div id="result-count" aria-live="polite"></div><div class="results" id="results"></div></aside>
+<section class="map-wrap" aria-label="Map of Monday address locations"><div id="map"></div><div class="basemap-message" id="basemap-message">Loading street map…</div><div class="legend"><span><i class="dot" style="background:#2563eb"></i>Exact address</span><span><i class="dot" style="background:#127c75"></i>Building</span><span><i class="dot" style="background:#d97706"></i>Approximate</span><span><i class="dot" style="background:#7c3aed"></i>User supplied</span></div></section>
+</main>
+<footer><span>Property / building coordinates. Curbside and alley pickup locations remain unconfirmed.</span><span>Coordinates: <a href="https://data.winnipeg.ca/City-Planning/Addresses/cam2-ii3u" target="_blank" rel="noopener">City of Winnipeg</a> plus user-supplied correction · WGS 84</span></footer>
+<script>__LEAFLET_JS__</script>
+<script>__MAPLIBRE_JS__</script>
+<script>__MAPLIBRE_LEAFLET_JS__</script>
+<script>__BASEMAP_POLICY_JS__</script>
+<script id="monday-data" type="application/json">__MONDAY_DATA__</script>
+<script>
+'use strict';
+const rows = JSON.parse(document.getElementById('monday-data').textContent);
+const fmt = n => n.toLocaleString('en-CA');
+const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const statusClass = s => ({'Exact address':'exact','Building address':'building','Approximate site centre':'approximate','User supplied':'supplied','Not found':'missing'}[s]);
+const colours = {'Exact address':'#2563eb','Building address':'#127c75','Approximate site centre':'#d97706','User supplied':'#7c3aed'};
+const search = document.getElementById('search'), status = document.getElementById('status'), results = document.getElementById('results');
+const lookup = rows.map(r => `${r[0]} ${r[1]} ${r[2]}`.toUpperCase());
+const mapped = rows.filter(r=>r[4]!==null);
+document.getElementById('totals').textContent = `${fmt(mapped.length)} of ${fmt(rows.length)} mapped`;
+document.getElementById('counts').textContent = `${fmt(rows.filter(r=>r[6]==='Building address').length)} building points · ${rows.filter(r=>r[6]==='Approximate site centre').length} approximate · ${rows.filter(r=>r[6]==='User supplied').length} user-supplied · ${rows.length-mapped.length} missing`;
+for(const option of status.options){if(option.value) option.textContent += ` (${fmt(rows.filter(r=>r[6]===option.value).length)})`;}
+const map = L.map('map',{preferCanvas:true,zoomControl:true,maxZoom:19,zoomSnap:.25,zoomAnimation:false,fadeAnimation:false,maxBoundsViscosity:1});
+const plottedBounds=L.latLngBounds(mapped.map(r=>[r[4],r[5]]));
+const centreLatitude=plottedBounds.getCenter().lat;
+const latitudePadding=50/111.32, longitudePadding=50/(111.32*Math.cos(centreLatitude*Math.PI/180));
+const allowedBounds=L.latLngBounds([plottedBounds.getSouth()-latitudePadding,plottedBounds.getWest()-longitudePadding],[plottedBounds.getNorth()+latitudePadding,plottedBounds.getEast()+longitudePadding]);
+map.setMaxBounds(allowedBounds);
+map.setMinZoom(map.getBoundsZoom(allowedBounds));
+map.fitBounds(plottedBounds,{padding:[30,30],maxZoom:17,animate:false});
+const message=document.getElementById('basemap-message');
+const basemapState={ready:false,paused:false,errors:[],instances:1,allowedBounds:allowedBounds.toBBoxString()};
+const policy=new CwsBasemapRequestPolicy({onStop:reason=>{basemapState.paused=true;message.style.display='block';message.textContent='Street basemap paused. Address points and search remain available.';basemapState.errors.push(reason);}});
+maplibregl.setMaxParallelImageRequests(4);
+maplibregl.setWorkerCount(2);
+maplibregl.addProtocol('cws-ofm',(parameters,controller)=>policy.request(parameters,controller));
+const base=L.maplibreGL({style:'https://tiles.openfreemap.org/styles/liberty',padding:0,interactive:false,attributionControl:false,renderWorldCopies:false,refreshExpiredTiles:false,
+  transformRequest:url=>({url:'cws-ofm://'+encodeURIComponent(url)})}).addTo(map);
+const glMap=base.getMaplibreMap();
+map.attributionControl.addAttribution('<a href="https://openfreemap.org/">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/">OpenMapTiles</a> · Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>');
+glMap.on('idle',()=>{if(!policy.stopped&&glMap.isStyleLoaded()&&glMap.areTilesLoaded()){basemapState.ready=true;message.style.display='none';}});
+glMap.on('error',event=>{const text=event.error&&event.error.message||'Basemap resource failed';if(!basemapState.errors.includes(text))basemapState.errors.push(text);policy.stop(text);});
+map.on('movestart',()=>{basemapState.ready=false;});
+// No idle-triggered fit, reload, animation, retry or recurring timer.
+window.mondayBasemap={state:basemapState,policy,map:glMap};
+const layer = L.layerGroup().addTo(map), renderer = L.canvas({padding:.4});
+let filtered=rows, displayed=0, selected=null, highlight=null;
+const groupKey = r=>`${r[4]},${r[5]}`;
+const groups = new Map();for(const r of mapped){const key=groupKey(r);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);}
+function popup(group){
+  let html=`<div class="popup-title">${group.length===1?'Monday address':`${group.length} Monday records at this point`}</div>`;
+  for(const r of group){html+=`<div class="popup-record"><b>${esc(r[1])}</b><br>AddressId ${r[0]} · ${esc(r[2])}<br><span class="${statusClass(r[6])}">${esc(r[6])}</span><br>${r[4].toFixed(6)}, ${r[5].toFixed(6)}<br><span class="popup-note">${esc(r[3])}<br>${esc(r[8])}${r[6]!=='Exact address'&&r[7]?`<br>City: ${esc(r[7])}`:''}</span></div>`;}
+  return html;
+}
+function choose(r){
+ selected=r[0];renderList(true);
+ if(highlight){map.removeLayer(highlight);highlight=null;}
+ if(r[4]===null){document.getElementById('result-count').textContent=`AddressId ${r[0]} has no confirmed coordinate. It remains in the data.`;return;}
+ map.setView([r[4],r[5]],18,{animate:false});
+ highlight=L.circleMarker([r[4],r[5]],{radius:9,color:'#142d46',weight:2,fillColor:colours[r[6]],fillOpacity:1}).addTo(map).bindPopup(popup(groups.get(groupKey(r))),{maxWidth:330}).openPopup();
+}
+function appendRows(){
+ const slice=filtered.slice(displayed,displayed+80);displayed+=slice.length;
+ for(const r of slice){const button=document.createElement('button');button.className='record'+(r[0]===selected?' selected':'');button.dataset.addressId=r[0];button.innerHTML=`<span class="address">${esc(r[1])}</span><span class="detail">ID ${r[0]} · ${esc(r[2])}</span><span class="status ${statusClass(r[6])}">${esc(r[6])}${r[4]!==null?` · ${r[4].toFixed(6)}, ${r[5].toFixed(6)}`:''}</span>`;button.onclick=()=>choose(r);results.appendChild(button);}
+ if(displayed<filtered.length){const more=document.createElement('button');more.className='more';more.textContent=`Show next ${Math.min(80,filtered.length-displayed)} records`;more.onclick=()=>{more.remove();appendRows();};results.appendChild(more);}
+}
+function renderList(keepScroll=false){const y=results.scrollTop,limit=keepScroll?displayed:80;results.replaceChildren();displayed=0;appendRows();while(displayed<Math.min(limit,filtered.length)){const more=results.querySelector('.more');if(more)more.remove();appendRows();}if(!filtered.length)results.innerHTML='<div class="empty">No matching Monday addresses.</div>';results.scrollTop=keepScroll?y:0;}
+function draw(){
+ layer.clearLayers();if(highlight){map.removeLayer(highlight);highlight=null;}
+ const visible=new Map();for(const r of filtered){if(r[4]!==null&&!visible.has(groupKey(r)))visible.set(groupKey(r),r);}
+ for(const [key,r] of visible){const group=groups.get(key);const pin=L.circleMarker([r[4],r[5]],{renderer,radius:r[6]==='Exact address'?3:4,stroke:false,fillColor:colours[r[6]],fillOpacity:.85});pin.on('click',()=>pin.bindPopup(popup(group),{maxWidth:330}).openPopup());layer.addLayer(pin);}
+ document.getElementById('result-count').textContent=`${fmt(filtered.length)} records · ${fmt(filtered.filter(r=>r[4]!==null).length)} with coordinates`;
+ window.mondayMapState={total:rows.length,mapped:mapped.length,filtered:filtered.length,visibleCoordinates:visible.size,status:status.value};
+}
+function fit(){const pts=filtered.filter(r=>r[4]!==null).map(r=>[r[4],r[5]]);if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[30,30],maxZoom:17,animate:false});}
+function update(){const tokens=search.value.trim().toUpperCase().split(/\s+/).filter(Boolean);filtered=rows.filter((r,i)=>(!status.value||r[6]===status.value)&&tokens.every(t=>lookup[i].includes(t)));selected=null;renderList();draw();if(tokens.length||status.value)fit();}
+let timer;search.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(update,180);});status.addEventListener('change',update);document.getElementById('fit').onclick=fit;document.getElementById('reset').onclick=()=>{search.value='';status.value='';update();fit();};
+renderList();draw();fit();window.mondayMap=map;
+</script>
+</body></html>
