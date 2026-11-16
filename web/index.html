@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Service Area Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='8' fill='%230d7167'/%3E%3Cpath d='M8 9h7v7H8zm9 0h7v7h-7zM8 18h7v7H8z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/vendor/leaflet.css"><link rel="stylesheet" href="/vendor/maplibre-gl.css"><link rel="stylesheet" href="/app.css"><link rel="stylesheet" href="/routing.css">
+  <script defer src="/vendor/leaflet.js"></script><script defer src="/vendor/maplibre-gl.js"></script><script defer src="/vendor/leaflet-maplibre-gl.js"></script><script defer src="/basemap-policy.js"></script><script defer src="/app.js"></script><script defer src="/routing.js"></script>
+</head>
+<body>
+<header class="masthead">
+  <a class="brand" href="/" aria-label="Service Area Studio home"><span class="brand-mark"><i></i><i></i><i></i><i></i></span><span>Service Area <b>Studio</b><small>WINNIPEG RESIDENTIAL</small></span></a>
+  <div class="header-middle"><span class="live-dot"></span> Local workspace <span class="separator">/</span> <strong id="workspace-day">Day from your file</strong></div>
+  <button class="quiet help-toggle" id="help-button">How it works <span>↗</span></button>
+</header>
+<main class="workspace" id="workspace">
+  <aside id="setup-panel" class="setup" aria-label="Partition configuration">
+    <div class="setup-heading"><span class="eyebrow">WORKSPACE / 01</span><h1>Shape your<br>service areas.</h1><p>Start with addresses. Build sections along the city's real geography.</p></div>
+    <section class="step input-step"><div class="step-title"><span class="step-number">1</span><h2>Service addresses</h2></div>
+      <label class="dropzone" id="dropzone" for="file-input"><span class="upload-icon">↑</span><strong>Drop your address file here</strong><span>or <u>browse files</u></span><small>CSV, TSV or XLSX · up to 30 MB</small></label>
+      <input id="file-input" type="file" accept=".csv,.tsv,.xlsx" class="visually-hidden">
+      <div class="or"><span></span> OR USE YOUR EXISTING DATA <span></span></div>
+      <label class="field-label" for="example-day">Existing address list</label><select id="example-day"><option value="MONDAY">Monday</option><option value="TUESDAY">Tuesday</option></select>
+      <button class="secondary full" id="demo-button">Load existing addresses ↗</button>
+      <a class="download-input" id="download-input" href="/api/workbook?day=TUESDAY" download>Download Excel upload ↓</a>
+      <details class="upload-options" id="upload-options"><summary>Upload options & required columns</summary><p>Latitude / Lat and Longitude / Lon / Lng are required. AddressId and Address are recognised automatically. Original IDs and repeated addresses stay separate.</p><label class="field-label" for="collection-day">Collection day</label><select id="collection-day"><option value="">Auto-detect from file</option><option value="MONDAY">Monday</option><option value="TUESDAY">Tuesday</option><option value="WEDNESDAY">Wednesday</option><option value="THURSDAY">Thursday</option><option value="FRIDAY">Friday</option><option value="SATURDAY">Saturday</option><option value="SUNDAY">Sunday</option></select><p id="day-hint">The collection-day column takes priority, then the worksheet or filename. For a mixed-day file, choose which day to partition. Choose a day here if the file has no day information.</p><label class="field-label" for="sheet-input">Excel sheet (optional)</label><input id="sheet-input" placeholder="Auto-detect address sheet"><p>Each run uses one collection day and one worksheet. Other days are counted and excluded only when you select a day.</p></details>
+      <div id="input-receipt" class="input-receipt" hidden></div>
+    </section>
+    <section class="step"><div class="step-title"><span class="step-number">2</span><h2>Preferred address range</h2></div>
+      <p class="mode-description">Natural boundaries first. The app then combines or divides areas to approach your range.</p>
+      <div id="range-preference"><label class="field-label" for="minimum-input">Addresses per area</label><div class="range-fields"><input id="minimum-input" type="number" min="1" max="9999" step="1" value="900" aria-label="Preferred minimum addresses"><span>to</span><input id="maximum-input" type="number" min="2" max="10000" step="1" value="1100" aria-label="Maximum preferred addresses"></div></div>
+      <p id="range-preview" class="range-preview" aria-live="polite">Preferred 900–1,100.</p>
+      <p class="hint">Ranges narrower than ±10% use ±10%. Useful natural areas and satisfactory neighbours stay intact. Exceptions remain visible.</p>
+      <p class="hint">Following a mapped road through intersections is valid. Mid-block cuts between neighbouring homes and opposing alley-side splits receive a heavy penalty. Prefer stronger, continuous boundaries.</p>
+    </section>
+    <section class="run-section"><button id="run-button" class="primary full" disabled>Create service areas <span>→</span></button><div id="progress-box" hidden><div class="progress-heading"><span id="progress-message">Preparing…</span><button id="cancel-button" class="text-button">Cancel</button></div><progress id="job-progress" max="100" value="0"></progress></div><p class="local-note"><span>●</span> Uploads and partitioning stay on this computer.</p></section>
+    <div class="setup-bottom"><span class="tiny-mark">CWS</span><p>Natural sections first.<br>Then truck routes and loads.</p></div>
+  </aside>
+  <section class="result-workspace" aria-label="Partition map and results">
+    <div class="result-heading"><div><div class="eyebrow" id="workspace-eyebrow">SERVICE AREA PLANNING</div><h2 id="workspace-title">A clearer view of the work.</h2><p id="workspace-subtitle">Upload your coordinates or load an existing address list to begin.</p></div><div class="export-control workspace-controls"><button id="settings-button" class="secondary" aria-expanded="true" aria-controls="setup-panel">Hide settings</button><button id="expand-map-button" class="secondary" aria-pressed="false">Expand map</button><button id="export-button" class="secondary" disabled>↓ Export results</button><div id="export-menu" class="export-menu" hidden><a data-kind="assignments">Address assignments · CSV</a><a data-kind="areas">Area boundaries · GeoJSON</a><a data-kind="review">Validation & boundary review · JSON</a><a data-kind="package">Download all · ZIP</a></div></div></div>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <div id="summary-stats" class="stats-strip"><div><small id="stat-addresses-label">SERVICE ADDRESSES</small><strong id="stat-addresses">—</strong><span id="stat-assigned">Waiting for input</span></div><div><small>SERVICE AREAS</small><strong id="stat-areas">—</strong><span id="stat-range">Natural geography first</span></div><div><small>OWNERSHIP CHECK</small><strong id="stat-coverage">—</strong><span id="stat-check">Every AddressId, once</span></div><div class="status-stat"><small>PLANNING STATUS</small><span id="status-pill" class="pill neutral">Ready to start</span><span>Pickup and road access need review</span></div></div>
+    <div class="map-and-explorer">
+      <div class="map-panel"><div id="map" aria-label="Service area map"></div>
+        <div class="map-top"><div class="map-label"><span class="live-dot"></span><span id="basemap-label">Local geography · no external requests</span></div><div class="map-actions"><button id="fit-button" title="Fit service addresses" aria-label="Fit service addresses">⌖</button><button id="points-button" aria-pressed="true" title="Show address points">•••</button></div></div>
+        <div id="map-empty" class="map-empty"><div class="empty-map-mark">▧</div><h3 id="map-empty-title">Your next service area<br>starts with an address.</h3><p id="map-empty-copy">Winnipeg geography is ready.<br>Upload coordinates or load an existing list.</p><button id="empty-demo" class="secondary">Load existing addresses →</button></div>
+        <div class="map-bottom"><div class="map-legend"><span><i class="legend-area"></i> Planning area</span><span><i class="legend-dot"></i> Service address</span></div><button id="municipal-button" class="map-basemap" aria-pressed="false" title="Official City neighbourhood boundaries">City boundaries</button><span id="municipal-legend" hidden style="color:#b45309;background:#fff;padding:6px">Dashed amber: City neighbourhoods</span><button id="basemap-button" class="map-basemap">Street detail <span>↗</span></button></div>
+        <div id="basemap-notice" class="basemap-notice" hidden></div>
+      </div>
+      <aside id="area-explorer" class="explorer" aria-label="Explore results"><div class="explorer-tabs" role="tablist"><button class="active" id="areas-tab" role="tab" aria-selected="true" data-tab="areas">Areas <span id="areas-badge">0</span></button><button id="checks-tab" role="tab" aria-selected="false" data-tab="checks">Checks <span id="checks-badge">0</span></button><button id="sources-tab" role="tab" aria-selected="false" data-tab="sources">Sources</button></div>
+        <div id="areas-panel" class="tab-panel"><div class="explorer-search"><span>⌕</span><input id="area-search" type="search" placeholder="Find area, address or ID…" aria-label="Find area, address or ID"></div><div id="selected-detail" hidden></div><div id="areas-list" class="areas-list"><div class="explorer-empty"><span>01 — 02 — 03</span><p>Your partitioned areas<br>will appear here.</p></div></div></div>
+        <div id="checks-panel" class="tab-panel" hidden><div class="panel-intro"><h3>Evidence before approval.</h3><p>Checks apply to the final polygons and source IDs. A planning section does not prove a drivable route.</p></div><div id="checks-list"></div></div>
+        <div id="sources-panel" class="tab-panel" hidden><div class="panel-intro"><h3>Grounded in Winnipeg.</h3><p>Frozen local references. No geocoding or geography download takes place when you partition a file.</p></div><div id="sources-list"></div></div>
+      </aside>
+    </div>
+    <footer class="workspace-footer"><span>WGS 84 coordinates · Geometry measured in UTM 14N</span><span id="footer-meta">Day from your file · Address IDs preserved</span></footer>
+  </section>
+</main>
+<dialog id="help-dialog"><button id="close-help" class="dialog-close" aria-label="Close help">×</button><span class="eyebrow">THE WORKFLOW</span><h2>From a list to<br>reviewable service areas.</h2><ol><li><strong>Load your service addresses.</strong><p>The app reads the collection day from the rows, worksheet or filename. Mixed-day files require a day selection in Upload options. You can also load the existing Monday or Tuesday list. Optional CollectionAccess values alley or curbside supply confirmed collection evidence.</p></li><li><strong>Enter your preferred range.</strong><p>The app builds natural areas first, then scores useful merges and supported divisions. Mid-block cuts between neighbouring homes and separating opposite sides of an alley carry a heavy penalty. Boundaries following mapped roads through intersections are valid. Existing satisfactory neighbours stay intact, and count exceptions remain visible.</p></li><li><strong>Inspect and export.</strong><p>Click inside an area for its name and count. Click an address for its service details. Search IDs, review checks and export assignments and boundaries. All processing and files stay local.</p></li></ol><p class="help-limit">These are provisional planning sections. Truck routes are calculated separately. Pickup access and legal crossings remain unverified. Other-weekday gaps are not evidence of empty land.</p><button id="help-done" class="primary full">Back to the workspace →</button></dialog>
+</body>
+</html>
