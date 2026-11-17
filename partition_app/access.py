@@ -151,6 +151,24 @@ def disconnected_count(regions,points,geography):
     return count
 
 
+def review_region(region,points,geography):
+    """Report remaining local-road access uncertainty on a final planning area."""
+    network=getattr(geography,'access_network',None)
+    if network is None:return {'available':False}
+    members=region['members'];geometry=region['geometry'];rows=geography.access_rows
+    found=network.components(geometry,members,points,rows)
+    groups=[g for g in found['groups'] if len(g)>=max(10,len(members)*.01)]
+    disconnected=[]
+    for group in groups[1:]:
+        if not network.connected({'geometry':geometry,'members':groups[0]},
+                                 {'geometry':geometry,'members':group},points,rows):
+            disconnected.append(len(group))
+    return {'available':True,'known_addresses':len(members)-len(found['unknown']),
+            'unknown_addresses':len(found['unknown']),
+            'significant_component_sizes':[len(g) for g in groups],
+            'unconnected_component_sizes':disconnected}
+
+
 def connected_points(left,right,a,b,geography):
     """Connectivity gate for the initial whole-cell consolidation stage."""
     network=getattr(geography,'access_network',None)

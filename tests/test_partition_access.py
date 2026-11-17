@@ -94,3 +94,20 @@ def test_final_empty_face_reconciliation_preserves_serviced_enclaves():
     assert areas[0].equals(outer.difference(enclave)) and areas[1].equals(enclave)
     assert areas[0].intersection(areas[1]).area==0
     assert not enclosed_owners(areas[0],list(areas.values()),STRtree(list(areas.values())))[1]
+
+
+def test_final_access_review_distinguishes_short_connections_and_unmatched_addresses():
+    from partition_app.access import review_region
+    for gap,expected in [(40,[]),(90,[10])]:
+        inventory=[road(1,[1,2],[(10,0),(10,100)],'West St'),
+            road(2,[3,4],[(10+gap,100),(10+gap,0)],'East St'),
+            road(3,[2,5],[(10,100),(10+gap/2,100)],'Cross St',highway='secondary',maxspeed='60'),
+            road(4,[5,3],[(10+gap/2,100),(10+gap,100)],'Cross St',highway='secondary',maxspeed='60')]
+        points=[Point(10,30)]*10+[Point(10+gap,30)]*10+[Point(50,350)]
+        rows=[{'address':'10 West St'}]*10+[{'address':'10 East St'}]*10+[{'address':'1 Unmatched St'}]
+        g=SimpleNamespace(access_network=RoadAccess(inventory),access_rows=rows)
+        result=review_region({'geometry':box(0,0,200,400),'members':set(range(21))},points,g)
+        assert result['significant_component_sizes']==[10,10]
+        assert result['unconnected_component_sizes']==expected
+        assert result['known_addresses']==20 and result['unknown_addresses']==1
+    assert review_region({'members':set()},[],SimpleNamespace())=={'available':False}

@@ -893,6 +893,12 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
             findings.append({"code": "NARROW_CONNECTION", "severity": "warning", "section": sid,
                              "message": "A 40 m geometry erosion separates serviced lobes. Review the connection; road access is not proven."})
         count = len(member_indices)
+        from .access import review_region
+        access_review=review_region({'geometry':geometry,'members':set(member_indices)},points,geography)
+        if access_review.get('unconnected_component_sizes'):
+            sizes=access_review['unconnected_component_sizes']
+            findings.append({'code':'PLANNING_ROAD_ACCESS','severity':'warning','section':sid,
+                'message':f"{sum(sizes)} addresses in {len(sizes)} mapped local-road population(s) have no demonstrated internal connection to this area's main population. Review pickup access and a separate planning area; this is not a verified truck route."})
         oversize_reason = None
         if target and count > ceiling:
             protected_count = max([atomic_counts[atomic.find(i)] for i in member_indices if rows[i]['trusted']] or [0])
@@ -908,6 +914,7 @@ def plan(dataset, geography, target=None, progress=lambda *_: None, tolerance=15
             "colour": COLOURS[(len(sections)) % len(COLOURS)], "components": len(parts), "holes": holes,
             "enclave_areas": enclave_ids,
             "nearby_small_area_group":nearby_allowed,"nearby_merge_links":nearby_links.get(root,[]),
+            "planning_road_access":access_review,
             "boundary_basis": "Natural areas first; range mode scores whole-area merges and supported finite municipal/broad-road splits. Last-resort whole-frontage regrouping is separately flagged for pickup-access review.",
             **planning_metadata.get(root,{}),
             "city_neighbourhood_counts":dict(parent_counts),
