@@ -1,5 +1,66 @@
 # Winnipeg residential ASL and rear-load routing
 
+## Connected service populations and coherent park boundaries - 2026-11-16
+
+Engine 4.7 uses actual mapped road nodes before optional count merges. Touching
+polygons and empty industrial land do not establish collection access. Complete
+finite road paths and mapped park paths compete using their full physical
+boundary cost, with a penalty for one service population wrapping around another.
+Major dividers and actual street/alley, site and parcel protections remain.
+No example street names, section IDs or user-drawn lines are algorithm exceptions.
+
+User visual QA rejected an outer ribbon and then a stepped three-area division.
+Those drafts are withdrawn. An earlier focused test of the original
+1,975-address Amber Trails population selected 444/1,531 along a complete park
+path. That isolated test is not the final full-day result. The full-day result
+assigns that cohort 1,350 / 469 / 156 into complete owners of 1,350 / 1,005 / 432,
+sharing southern work with adjacent areas. The rejected stepped green area and
+outer ribbon are removed; the 1,350 count and the user's preferred two-area
+alternative remain unresolved. Retaining a larger complete area is preferable
+to forcing a worse road division to reach the preferred count range.
+An earlier 847/1,128 park alternative is rejected because it strands 92 addresses
+whose connection passes through the other proposed child.
+
+All 248 Python tests pass. Reused geometry calculations agree with the reference
+frontage groups and physical scores on all 14 saved park alternatives. An
+interactive run reserves five minutes of its 30-minute limit for mandatory final
+validation. Optional school/park polishing may stop with its complete current
+state and an explicit untested-alternatives warning; final checks never become
+optional. Candidate ordering is deterministic, while the amount of optional
+search completed can depend on runtime.
+
+The enclosure score is now `4r + 120r²`, where `r` measures other addresses
+surrounded by a population relative to its own size. This rejects heavily
+wrapping ribbons more strongly while ignoring empty park space. A failed
+optional geographic subdivision is recorded and rejected without discarding
+the completed valid areas; mandatory final checks remain unchanged.
+Final areas expose significant populations without a demonstrated internal
+road connection as specific Checks warnings. Unmatched access stays unknown;
+planning connectivity does not establish a legal directed truck route.
+
+Full Wednesday/Thursday saved-result validation and Chrome comparison are
+complete: 39 before/after views cover 38 recorded cases, including every
+materially changed population or boundary and the rejected outer-ribbon draft.
+Wednesday preserves all 22,202 IDs in 46 areas; Thursday preserves all 19,316 IDs
+in 31 areas. Both have zero published overlap and zero validation errors, with
+20,724 / 18,405 independent serviced-parcel checks. Actual complete partition
+times were 1,144.594 / 804.572 seconds; both optional searches completed.
+These are partition timings, not truck-route solver estimates.
+
+Four Wednesday and five Thursday areas remain above 1,100. Eighteen of the
+previous 39 Wednesday populations and 19 of Thursday's 32 are exactly preserved;
+the Tyndall 911/543 split remains intact. Thursday's 2,035-address parent stays
+whole rather than accepting either rejected wrapping division. Remaining access,
+small-area and preservation concerns are recorded individually. OPEN B07 remains
+open; passing geometry does not establish operationally ideal boundaries.
+Evidence, backups, rejected drafts, user screenshots and receipts are kept in
+the existing delivery's `audit/partition_app/access_boundary_2026-11-16/`.
+The six Wednesday/Thursday exports and matching cache entries are updated;
+all 22 other root delivery files remain byte-identical. The restarted app
+serves both verified 4.7 results and preserves Thursday as the active day.
+The user still uploads workbooks manually; no truck solve was started.
+See [partition-access-validation.md](partition-access-validation.md).
+
 ## Wednesday park corridor and publication repair - 2026-11-16
 
 Engine 4.6 result

@@ -1,5 +1,156 @@
 # Winnipeg QA and mistake log
 
+## OPEN B07 - Count merges and boundary scoring ignore useful road access
+
+User QA 2026-11-16, Wednesday 4.6 result `7899007b2c8f6638593e9b22f0b307abfafc5c242396fca196067fec46f388e5`
+and Thursday 4.6 result `42ca46633dfc5cc58ef662789855f40d388fbcea4f35ff7e36325027399fe977`.
+The user requests general rules and before/after visual QA, preserving previous
+partitions. Street names and IDs below identify examples only.
+
+- Keep under-limit natural populations separate unless a direct mapped road
+  connection joins them. WED-009's northern population may combine better with
+  WED-003 during truck allocation; geometric contact is not access evidence.
+- Compare Templeton against the WED-008/016 Diplomat/Beecher detour. Prefer the
+  stronger continuous boundary when counts and protected frontages permit it.
+- Review WED-014/022 around the park and Jefferson: separate weakly accessible
+  eastern strips; compare the western/southern population with the closer area.
+- Separate WED-012's population north of Jefferson when its internal access is
+  disconnected from the rest of its owner.
+- Compare WED-005/022 alternatives using Adsum, Mandalay, Sheppard and Jefferson.
+  Rear-alley service is reported as likely, not confirmed per address; preserve
+  that uncertainty while comparing real road-aligned planning alternatives.
+- WED-010 has two user-marked possible soft divisions through mapped roads.
+  Generate multi-road alternatives usable by later whole-fleet allocation.
+- THU-004 has a long unserviced industrial/rail appendage; inspect its cause.
+- Compare THU-026's single address with THU-021 using actual road access.
+- Compare Rupert's Land/Matheson East divisions inside oversized THU-005.
+- Compare THU-012 north of Jefferson with THU-024's access and adjacency.
+- Compare THU-022/020/007/003 using Arlington, McGregor, Salter, Main and
+  Burrows; prevent interlocking sections and give stronger multilane roads
+  appropriate physical weight using mapped evidence, never street names.
+- Compare THU-013/021/017 using William, McPhillips, Sherbrook, Notre Dame and
+  Isabel; preserve useful connected frontages and prefer the stronger corridor.
+
+Additional user QA during comparison review: the first WED-010 candidate left
+an orange outer ribbon wrapping the two central sections, with narrow serviced
+strips along Moselle and the western/eastern edges. This is unacceptable even
+when counts, parcels and coverage pass. Preserve
+`wed010_wrapping_sliver_user_qa.png`; compare service-population enclosure and
+complete road paths, without penalising genuinely unserved park space or
+turning a population hull into a published boundary. Keep B07 OPEN until the
+saved replacement has been visually checked.
+
+Further user QA rejects the subsequent 701/657/617 focused candidate: the
+green stepped residential-road boundary is worse than leaving the parent
+unsplit. The user prefers a two-area option along the continuous park strip,
+keeping potential pickups on both sides of a road together. Preserve
+`wed010_park_two_way_user_qa.png` and `wed010_stepped_road_user_qa.png`. A valid
+road path is not automatically a useful planning division. Generate complete
+park/road alternatives and compare their frontage cohesion and complexity;
+retain the unsplit parent when no better supported division passes. The
+three-area focused candidate is withdrawn, not an accepted correction.
+
+Cause found: averaging boundary strength omitted the cost of its full length,
+and the candidate search did not connect mapped park edges with checked road
+space. An early ordinary-segment group veto also rejected legitimate park-gap
+alternatives before the actual street/alley assessment. The revised focused
+pipeline chooses 847/1,128 along the stronger park path, retaining its explicit
+28-address excess. A subsequent road-network check rejects that candidate too:
+92 Baltic Bay/Innsbruck Way addresses would need the other child's roads to
+reach the rest of their owner. The split and fallback stages now reject newly
+stranded road populations, using the same access check as later refinements.
+The earlier focused accepted-for-full-testing option was 444/1,531 on a complete park
+path, with one connected mapped road population per child (four addresses still
+have unmatched road access). The 1,531 count remains explicitly unresolved.
+No named street is an exception. Site/coordinate/parcel protections and real
+street/alley rejection remain. This was an isolated proposal, not the final
+full-day result; completed whole-day findings are recorded below.
+
+Apply full seam physical cost to fallback and continuity refinement too. A
+later road-only score must not undo a better park edge selected earlier. A
+passing count or a visually plausible park line is not road-connectivity QA.
+
+Performance prevention: the first combined-path generator rebuilt an identical
+path buffer for every connection. Reuse that buffer per candidate; the change
+does not relax geometry checks or alter candidate choices. The indexed frontage
+lookup was also checked against the complete scan on real alternatives.
+
+Two full-day checks then reached the 30-minute app limit during optional
+land-use polishing, losing their otherwise completed work. Reuse prepared
+boundary linework and repeated ground searches without changing acceptance.
+All 14 saved park-path alternatives have identical frontage groups and physical
+scores under the reference and revised calculations. Reserve the last five
+minutes for final validation: optional polishing may retain its completed
+state with an explicit incomplete-search warning, but never skip ownership,
+parcel, major-divider, street/alley or overlap checks. The complete result still
+must pass those checks before publication. Both final runs completed the
+optional search and all mandatory checks, as recorded below.
+
+A later QA attempt was interrupted when a requested 30-second wait returned
+after approximately 32 minutes. Its wall-clock deadline expired without a
+completed result. Do not use those aborted wall times as compute-performance
+benchmarks. The local QA workers now make a temporary system-availability
+request while running, retain real elapsed and CPU times separately, and
+release the request when they exit. No power-plan settings are changed.
+The indexed park-path generator also reproduces all 114 reference paths in
+the focused cohort, including their order and mapped connection evidence.
+
+Screenshots, original result copies, ownership hashes and a per-example receipt
+belong in `audit/partition_app/access_boundary_2026-11-16/`. Coverage alone is
+insufficient. DONE requires saved outputs, access/parcel/major-divider and
+overlap regression checks, plus visual review of every affected example.
+
+Full-day Chrome QA rejected another draft: the Thursday 1,188/847 division
+wrapped a service strip around 448 addresses belonging to its neighbour. A
+linear enclosure penalty of `4r` was insufficient; use `4r + 120r²`, where `r`
+is enclosed other addresses divided by the area's own count. This is a general
+soft penalty, not a street exception. Empty parks and rivers contribute no
+addresses. Preserve `browser-qa/thursday-review-2.png` as rejected evidence.
+A preliminary quadratic weight of 40 still selected a smaller wrapping
+458/1,577 division; preserve `thursday_small_wrapping_rejected.json` and
+`browser-qa/thursday-shape-correction-probe.png` as rejected evidence too.
+
+An optional Wednesday school/park comparison also failed parent coverage by
+18.373 m² and aborted the whole calculation. Reject that specific candidate,
+record the reason, and retain the valid regions. Do not suppress unrelated
+errors or loosen final geometry checks. The regression suite has 248 passing
+tests; the final saved-result and visual checks are recorded below.
+
+Do not hide final access remnants behind the general road-QA warning. The
+Thursday draft retained 41 Burrows and 22 Alfred/Main addresses without a
+demonstrated internal connection to their area's main population. These are
+specific unresolved planning-access warnings, not proved legal truck routes.
+The general final-area review accounts for real short intersection links and
+keeps unmatched addresses unknown.
+
+Final engine 4.7 results, visually reviewed in Chrome using cached local vectors:
+
+- Wednesday `8f805fc391887a4e83e4600d202306cb55ae018e3539e320b649ac2ce1f7c228`:
+  22,202 unchanged source IDs, 46 areas, zero errors and zero published overlap;
+  20,724 independently checked serviced parcels. Complete runtime 1,144.594 s.
+- Thursday `6028b0f3bba02da73e15029034c672fa44e47dfb869f91a9e747144a44bc97a6`:
+  19,316 unchanged source IDs, 31 areas, zero errors and zero published overlap;
+  18,405 independently checked serviced parcels. Complete runtime 804.572 s.
+- All 38 case records have actual before/after visual findings and screenshots;
+  the rejected outer-ribbon comparison makes 39 views. Both optional searches
+  completed. No live basemap requests, input uploads or truck solves were used.
+- The full-day Amber Trails cohort is 1,350 / 469 / 156, joining complete owners
+  of 1,350 / 1,005 / 432. Its rejected stepped green area and outer ribbon are
+  gone. Do not describe the earlier isolated 444/1,531 option as the saved result.
+- Tyndall 911/543 populations remain exact. Eighteen of the old 39 Wednesday
+  populations and 19 of Thursday's 32 remain exact; not all previous satisfactory
+  populations are preserved. Thursday's 2,035-address parent remains whole.
+
+B07 remains OPEN. Four Wednesday and five Thursday areas exceed 1,100. The
+Templeton split, exact two-way Amber Trails alternative, Thursday Matheson/
+Rupert's Land split, requested Arlington/McGregor/Salter and Isabel arrangement,
+THU-026 merge and smaller Jarvis lobe remain unresolved. Wednesday's narrow
+northern road-space extension by old WED-006/023 and isolated one/two-address
+site populations also remain review items. Thursday's 41/22-address access
+remnants are explicitly warned. See the per-example outcomes in
+[partition-access-validation.md](partition-access-validation.md) and local
+`case_review.json`; REVIEWED_OPEN means inspected, not corrected or approved.
+
 ## DONE B06 - Clear internal park corridor omitted from an oversized Wednesday area
 
 User QA 2026-11-16: WED-001 in result
