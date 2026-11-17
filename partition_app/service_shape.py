@@ -18,8 +18,12 @@ def enclosure(members,points,geography):
     if key not in geography.shape_cache:
         hull=MultiPoint([points[i] for i in sorted(key)]).convex_hull
         others={int(i) for i in geography.shape_tree.query(hull,predicate='contains')}-key
+        ratio=len(others)/max(1,len(key))
+        # A small corner intrusion is mild. A population wrapping hundreds of
+        # another owner's addresses is a much worse outcome: a linear score
+        # let count improvement buy narrow residential ribbons too cheaply.
         geography.shape_cache[key]={'surrounded_other_addresses':len(others),
-            'penalty':4*len(others)/max(1,len(key))}
+            'penalty':4*ratio+120*ratio**2}
     return geography.shape_cache[key]
 
 
