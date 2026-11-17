@@ -256,6 +256,10 @@ def alley_frontage_candidates(features, roads):
     return candidates
 
 
+class SubdivisionCoverageError(ValueError):
+    """A proposed finite subdivision failed to preserve its parent's footprint."""
+
+
 def subdivide(parent, lines):
     """Exact finite feature geometry only. No extended rays or point-shaped polygons."""
     if not lines:
@@ -271,8 +275,9 @@ def subdivide(parent, lines):
     boundary = unary_union([parent.boundary, *(set_precision(line, 0) for line in lines)])
     parts = [p for p in polygonize(boundary) if parent.covers(p.representative_point()) and p.area > 0]
     # The partition must cover its original geometry, including source polygon holes.
-    if not parts or unary_union(parts).symmetric_difference(parent).area > 0.5:
-        raise ValueError(f"Geographic subdivision did not preserve the parent area ({unary_union(parts).symmetric_difference(parent).area:.3f} m2).")
+    difference = unary_union(parts).symmetric_difference(parent).area
+    if not parts or difference > 0.5:
+        raise SubdivisionCoverageError(f"Geographic subdivision did not preserve the parent area ({difference:.3f} m2).")
     return sorted(parts, key=canonical)
 
 

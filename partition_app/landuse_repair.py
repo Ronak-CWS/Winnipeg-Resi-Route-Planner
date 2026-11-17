@@ -2,7 +2,7 @@
 import hashlib
 import time
 from shapely.ops import unary_union
-from .geography import shared_boundary,canonical
+from .geography import shared_boundary,canonical,SubdivisionCoverageError
 from .boundary_evidence import profile,land_features
 
 
@@ -45,7 +45,15 @@ def improve(regions,points,buckets,parcels,geography,lower,upper,ledger,evidence
             tested.add(key);parent=left['geometry'].union(right['geometry'])
             if parent.geom_type!='Polygon' or hard_separator(parent,[points[i] for i in left['members']|right['members']],geography):continue
             progress(71,f'Comparing school and commercial boundaries {position}/{len(pending)}')
-            alternatives=candidates(left,right,points,buckets,parcels,geography)
+            try:
+                alternatives=candidates(left,right,points,buckets,parcels,geography)
+            except SubdivisionCoverageError as error:
+                # This optional comparison cannot invalidate completed work.
+                # Reject only its proposal; the original regions and every
+                # mandatory final geometry check remain intact.
+                audit['rejections'].append({'reason':'Candidate subdivision does not preserve coverage',
+                    'detail':str(error),'counts':[len(left['members']),len(right['members'])]})
+                continue
             before=affected(a,b,left,right);options=[]
             for option in alternatives:
                 audit['candidates']+=1;children=option['children'];counts=[len(c['members']) for c in children]

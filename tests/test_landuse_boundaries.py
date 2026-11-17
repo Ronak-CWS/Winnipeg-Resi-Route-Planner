@@ -134,3 +134,29 @@ def test_optional_landuse_repair_preserves_satisfactory_neighbours(monkeypatch):
     revised,audit=improve(regions,points,{}, {},g,900,1100,[],{},lambda *_:None)
     assert [len(r['members']) for r in revised]==[1000,923]
     assert any(r['counts']==[800,1123] and 'satisfactory' in r['reason'] for r in audit['rejections'])
+
+
+@pytest.mark.parametrize('coverage_failure',[True,False])
+def test_optional_comparison_keeps_valid_areas_when_subdivision_loses_coverage(monkeypatch,coverage_failure):
+    from partition_app.landuse_repair import improve
+    from partition_app.geography import SubdivisionCoverageError
+    import partition_app.landuse_candidates as proposals
+    road={'id':'road','name':'Local','type':'STREET','geometry':LineString([(100,0),(100,200)])}
+    park={'id':'park','category':'park','geometry':box(0,0,60,200)}
+    g=geography([park],roads=[road]);g.neighbourhoods=[]
+    regions=[{'geometry':box(0,0,100,200),'members':{0}},
+             {'geometry':box(100,0,200,200),'members':{1}}]
+    def invalid_proposal(*args):
+        if coverage_failure:raise SubdivisionCoverageError('18.373 m2 lost')
+        raise ValueError('Unrelated invalid input')
+    monkeypatch.setattr(proposals,'candidates',invalid_proposal)
+    if not coverage_failure:
+        with pytest.raises(ValueError,match='Unrelated invalid input'):
+            improve(regions,[Point(20,50),Point(150,50)],{},{},g,900,1100,[],{},lambda *_:None)
+        return
+    revised,audit=improve(regions,[Point(20,50),Point(150,50)],{},{},g,900,1100,[],{},lambda *_:None)
+    assert revised==regions
+    assert audit['changes']==[]
+    assert audit['rejections']==[{'reason':'Candidate subdivision does not preserve coverage',
+                                 'detail':'18.373 m2 lost','counts':[1,1]}]
+    assert unary_union([r['geometry'] for r in revised]).equals(box(0,0,200,200))
