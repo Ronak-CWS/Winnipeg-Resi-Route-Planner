@@ -1,7 +1,7 @@
 """Complete finite paths combining mapped park edges and checked road space."""
 import hashlib,heapq,math
 from collections import defaultdict
-from shapely.geometry import Point,LineString
+from shapely.geometry import Point,LineString,MultiPolygon
 from shapely.ops import unary_union,nearest_points
 from shapely.strtree import STRtree
 from .geography import line_parts,polygon_parts,canonical
@@ -80,26 +80,39 @@ def candidates(parent,geography,limit=160):
                 bridges[identity]={'id':identity,'category':'landuse_completion','geometry':path,
                     'source_ids':[feature['id']],'length_m':round(path.length,3),
                     'evidence':'Mapped land-use vertex to mapped road through checked empty road space'}
-    bridge_lines=[f['geometry'] for f in bridges.values()]
+    bridge_values=list(bridges.values())
+    bridge_lines=[f['geometry'] for f in bridge_values]
+    bridge_tree=STRtree(bridge_lines)
     lines=line_parts(unary_union([road_union,land,*bridge_lines]).intersection(parent))
     mask=unary_union([land,*bridge_lines]).buffer(.1);graph=defaultdict(list);edges=[]
+    mask_parts=polygon_parts(mask);mask_tree=STRtree(mask_parts)
+    def supported_length(line):
+        # Preserve the exact existing mask and component order. Disjoint mask
+        # components cannot contribute to this intersection and need not be
+        # rebuilt by GEOS for every road segment in the graph.
+        hits=sorted(int(i) for i in mask_tree.query(line,predicate='intersects'))
+        if not hits:return 0.
+        local=mask_parts[hits[0]] if len(hits)==1 else MultiPolygon([mask_parts[i] for i in hits])
+        return line.intersection(local).length
     for line in lines:
         if line.length<.1:continue
         a,b=tuple(line.coords[0]),tuple(line.coords[-1]);index=len(edges)
-        support=line.intersection(mask).length/line.length
+        support=supported_length(line)/line.length
         weight=line.length*(1-.88*support);edges.append(line)
         graph[a].append((b,index,weight));graph[b].append((a,index,weight))
-    ends=sorted(n for n in graph if Point(n).distance(parent.boundary)<.03)
+    boundary=parent.boundary
+    ends=sorted(n for n in graph if Point(n).distance(boundary)<.03)
     if len(ends)>80:ends=[ends[round(i*(len(ends)-1)/79)] for i in range(80)]
+    end_nodes=set(ends)
     found={};minimum=max(250,math.sqrt(parent.area)*.35)
     for source in ends:
         best={source:0.};queue=[(0.,source,())]
         while queue:
             weight,node,path=heapq.heappop(queue)
             if weight!=best.get(node):continue
-            if node in ends and node!=source:
+            if node in end_nodes and node!=source:
                 if math.dist(source,node)>=minimum and path:
-                    line=unary_union([edges[i] for i in path]);supported=line.intersection(mask).length
+                    line=unary_union([edges[i] for i in path]);supported=supported_length(line)
                     if line.length<3*math.dist(source,node) and supported>250 and supported>line.length*.35:
                         found[canonical(line)]=(weight,line)
                 continue
@@ -111,7 +124,8 @@ def candidates(parent,geography,limit=160):
     output=[]
     for _,line in sorted(found.values(),key=lambda v:(v[0],canonical(v[1])))[:limit]:
         path_mask=line.buffer(.1)
-        used=[f for f in bridges.values() if f['geometry'].intersection(path_mask).length>1]
+        used=[bridge_values[int(i)] for i in sorted(bridge_tree.query(path_mask,predicate='intersects'))
+            if bridge_lines[int(i)].intersection(path_mask).length>1]
         geography.boundary_land_completions.update({f['id']:f for f in used})
         output.append({'id':'landuse-path-'+hashlib.sha256(canonical(line).encode()).hexdigest()[:16],
             'name':'Connected mapped park / road-space path','category':'landuse_corridor','rank':3,
